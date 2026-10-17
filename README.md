@@ -5,13 +5,13 @@
 **Production-ready Claude Code configuration for rapid app development.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Agents](https://img.shields.io/badge/Agents-12-purple)](agents/)
+[![Agents](https://img.shields.io/badge/Agents-13-purple)](agents/)
 [![Commands](https://img.shields.io/badge/Commands-16-green)](commands/)
-[![Skills](https://img.shields.io/badge/Skills-18-orange)](skills/)
+[![Skills](https://img.shields.io/badge/Skills-16-orange)](skills/)
 [![Rules](https://img.shields.io/badge/Rules-curated-red)](rules/)
 [![Token-Saving Hooks](https://img.shields.io/badge/Hooks-Token--Saving-blueviolet)](hooks/)
 
-12 agents · 16 commands · 18 skills · curated rules · token-saving hooks.
+13 agents · 16 commands · 16 skills · curated rules · token-saving hooks.
 
 Deliberately lean: skill descriptions, agent definitions, and MCP schemas all consume context in **every** session. This config stays well under the ~10% startup-overhead budget so auto-invocation keeps working and subagents don't blow their context at spawn.
 
@@ -45,7 +45,7 @@ cd claude-code-config
 ./install.sh
 ```
 
-Restart Claude Code. Try `/plan`, `/tdd`, `/verify`, or `/code-review`.
+Restart Claude Code. Try `/tdd`, `/verify`, `/build-fix`, or the built-in `/code-review`.
 
 **Minimal install** (agents, commands, skills, rules only — no hooks):
 
@@ -83,7 +83,7 @@ What happens to each file in `~/.claude/`:
 | Path | Behaviour on update |
 |------|---------------------|
 | `settings.json` | **Never overwritten** — your customisations are safe. Diff against the repo's `settings.json` to see new defaults worth merging. |
-| `mcp.json` | **Never overwritten** — protects your tokens. |
+| MCP servers | Registered at user scope via `claude mcp add` (stored in `~/.claude.json`); already-registered servers are left alone. |
 | `agents/`, `commands/`, `skills/`, `rules/` | Replaced with latest. Previous copy backed up to `~/.claude/backups/pre-install-<timestamp>/` first. |
 | `~/.local/share/claude-code-config` (the clone) | Fast-forwarded to `origin/main`. |
 
@@ -133,9 +133,9 @@ The default install is **zero runtime dependencies**. The Node-based token-savin
 
 | Component | Count | Examples |
 |-----------|------:|----------|
-| Agents | 12 | `planner`, `architect`, `code-reviewer`, `security-reviewer`, `tdd-guide`, `build-error-resolver`, `typescript-reviewer`, `python-reviewer`, `database-reviewer`, `docs-lookup`, `e2e-runner`, `refactor-cleaner` |
-| Slash commands | 16 | `/plan`, `/tdd`, `/verify`, `/code-review`, `/build-fix`, `/e2e`, `/test-coverage`, `/refactor-clean`, `/python-review`, `/docs`, `/ponytail` + 5 ponytail subcommands |
-| Skills | 18 | api-design, backend/frontend-patterns, postgres-patterns, database-migrations, security-review, e2e-testing, market-research, ponytail, python + swift/SwiftUI/Foundation Models packs |
+| Agents | 13 | `planner`, `architect`, `code-reviewer`, `security-reviewer`, `tdd-guide`, `build-error-resolver`, `typescript-reviewer`, `python-reviewer`, `database-reviewer`, `docs-lookup`, `e2e-runner`, `refactor-cleaner`, `swift-reviewer` |
+| Slash commands | 16 | `/tdd`, `/verify`, `/build-fix`, `/e2e`, `/test-coverage`, `/refactor-clean`, `/python-review`, `/swift-review`, `/swift-test`, `/docs`, `/ponytail` + 5 ponytail subcommands |
+| Skills | 16 | api-design, backend/frontend-patterns, postgres-patterns, database-migrations, e2e-testing, market-research, ponytail, python + swift/SwiftUI/Foundation Models packs |
 | Coding rules | curated | Common (coding style, git workflow, testing, security, multi-repo-consistency) + TypeScript, Python, Swift |
 | MCP servers | 2 | `context7` (docs, used by `docs-lookup`), `playwright` (used by `e2e-runner`) — GitHub via `gh` CLI, not MCP |
 
@@ -149,7 +149,8 @@ The default install is **zero runtime dependencies**. The Node-based token-savin
 
 ## Workflows
 
-- **Idea → plan → TDD → ship** — `/plan` uses the brainstorming skill, `/tdd` runs RED-GREEN-REFACTOR.
+- **Idea → plan → TDD → ship** — plan with the built-in plan mode (Shift+Tab) or the `planner` agent, then `/tdd` runs RED-GREEN-REFACTOR.
+- **Built-ins, not shadows** — `/plan`, `/code-review`, and `/security-review` are Claude Code built-ins, so this config deliberately ships no files with those names (a user command of the same name hides the built-in).
 - **Intelligent routing** — the `task-router` hook analyses every prompt and surfaces the right agent or skill as a hint. Routes include: `plan-first`, `architecture`, `debug`, `tdd`, `security`, `review`, `refactor`, `build-fix`, `docs`, `performance`, `backend` (endpoint/migration/queue work → backend-judgement checklist), `reasoning` (ambiguous/cross-cutting prompts → systematic-reasoning).
 - **Session continuity** — `session-restore` on start, `pre-compact-checkpoint` before compaction, `session-persist` on stop. Pick up where you left off across restarts.
 - **Deliberate thinking** — the `systematic-reasoning` skill forces a four-pass model-building process before non-trivial changes. The `backend-judgement` skill applies a 9-check production-safety list to every endpoint, migration, queue consumer, and job.
@@ -159,20 +160,14 @@ The default install is **zero runtime dependencies**. The Node-based token-savin
 
 ## MCP Servers
 
-Edit `~/.claude/mcp.json` to enable.
+`./install.sh` registers these at user scope with `claude mcp add` (Claude Code reads MCP servers from `~/.claude.json` or a project `.mcp.json` — a file at `~/.claude/mcp.json` is never loaded).
 
-| Server | Purpose | Setup |
-|--------|---------|-------|
-| `context7` | Live library/API docs | None — zero config |
-| `playwright` | Browser automation | None — zero config |
-| `magic` | Magic UI components | None — zero config |
-| `github` | Manage repos/PRs | GitHub token + Docker |
+| Server | Purpose | Manual setup |
+|--------|---------|--------------|
+| `context7` | Live library/API docs | `claude mcp add --scope user context7 -- npx -y @upstash/context7-mcp@latest` |
+| `playwright` | Browser automation | `claude mcp add --scope user playwright -- npx -y @playwright/mcp --browser chrome` |
 
-GitHub setup:
-
-```bash
-gh auth token    # paste into ~/.claude/mcp.json, replace <YOUR_GITHUB_TOKEN>
-```
+GitHub: use the `gh` CLI rather than an MCP server — no token sits in a config file.
 
 ---
 
@@ -180,7 +175,7 @@ gh auth token    # paste into ~/.claude/mcp.json, replace <YOUR_GITHUB_TOKEN>
 
 Deny-list defaults protect credentials and destructive commands — see `settings.json`. Permissions block:
 
-- Reads of `~/.ssh`, `~/.aws`, `.env`, `credentials*`, `secrets*`
+- Reads of `~/.ssh`, `~/.aws`, `.env`, `credentials*`, `secrets*`, and edits to `~/.ssh`, `~/.aws`, `~/.env` (file-write denies must use `Edit(...)` — Claude Code ignores `Write(...)` path rules)
 - `rm -rf /`, `rm -rf ~`, `rm -rf /*`
 - `curl|bash`, `wget|bash`, `curl -d` exfiltration patterns
 - `git remote add`, `npm publish`, `nc`/`netcat`
@@ -281,8 +276,9 @@ After installing this config, layer these official marketplaces on top — they'
 ```
 claude-code-config/
 ├── .claude-plugin/
+│   ├── plugin.json        # Plugin manifest
 │   └── marketplace.json   # Plugin marketplace entry (Anthropic convention)
-├── agents/                # 12 specialized subagents
+├── agents/                # 13 specialized subagents
 ├── commands/              # 10 slash commands
 ├── skills/                # 17 workflow skills
 ├── rules/                 # Curated coding rules (common + python/swift/typescript)
@@ -295,8 +291,7 @@ claude-code-config/
 ├── docs/                  # Developer docs (PLUGIN_SCHEMA_NOTES.md, tapes/)
 ├── install.sh             # Zero-dep installer (--minimal / --full / --uninstall / --dry-run)
 ├── settings.json          # Starter settings (permissions + token-saving hooks)
-├── mcp.json               # MCP server config (add your tokens)
-├── plugin.json            # Claude Code plugin manifest
+├── mcp.json               # Reference MCP server definitions (installer registers them via the CLI)
 └── AGENTS.md              # Full agent reference
 ```
 

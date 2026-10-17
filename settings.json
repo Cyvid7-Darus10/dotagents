@@ -1,16 +1,17 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "deny": [
-      "Read(~/.ssh/*)",
-      "Read(~/.aws/*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
       "Read(~/.env)",
       "Read(**/credentials*)",
       "Read(**/.env.local)",
       "Read(**/.env.production)",
       "Read(**/secrets*)",
-      "Write(~/.ssh/*)",
-      "Write(~/.aws/*)",
-      "Write(~/.env)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.aws/**)",
+      "Edit(~/.env)",
       "Bash(rm -rf /)",
       "Bash(rm -rf ~)",
       "Bash(rm -rf /*)",
@@ -37,8 +38,7 @@
             "type": "command",
             "command": "node \"$HOME/.claude/hooks/pre-read.mjs\""
           }
-        ],
-        "description": "Block duplicate file reads to save context tokens"
+        ]
       }
     ],
     "PostToolUse": [
@@ -49,8 +49,7 @@
             "type": "command",
             "command": "node \"$HOME/.claude/hooks/compress.mjs\""
           }
-        ],
-        "description": "Compress noisy tool output before it bloats context"
+        ]
       }
     ]
   },

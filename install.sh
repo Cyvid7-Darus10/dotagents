@@ -225,20 +225,10 @@ for comp in "${COMPONENTS[@]}"; do
   done
 done
 
-# Install top-level metadata files.
-# Note: marketplace.json is NOT installed to ~/.claude/ — it only belongs in the
-# plugin repo's .claude-plugin/ directory. Claude Code does not read it from ~/.claude/.
+# Top-level metadata (AGENTS.md, plugin manifest) is NOT copied to ~/.claude/:
+# Claude Code loads ~/.claude/AGENTS.md into every session, and the manifest is
+# only read from a plugin's .claude-plugin/ directory.
 echo ""
-for file in AGENTS.md plugin.json; do
-  if [ -f "$SCRIPT_DIR/$file" ]; then
-    if [ "$DRY_RUN" = true ]; then
-      echo -e "  ${BLUE}[dry-run]${NC} Would install $file"
-    else
-      cp "$SCRIPT_DIR/$file" "$CLAUDE_DIR/$file"
-      echo -e "  ${GREEN}Installed${NC} $file"
-    fi
-  fi
-done
 
 # settings.json — don't clobber user customisations
 if [ -f "$CLAUDE_DIR/settings.json" ]; then
@@ -250,13 +240,27 @@ else
   fi
 fi
 
-# mcp.json — never overwrite (may contain tokens)
-if [ -f "$CLAUDE_DIR/mcp.json" ]; then
-  echo -e "  ${YELLOW}Skipped${NC} mcp.json (already exists — won't overwrite tokens)"
-else
-  if [ "$DRY_RUN" = false ] && [ -f "$SCRIPT_DIR/mcp.json" ]; then
-    cp "$SCRIPT_DIR/mcp.json" "$CLAUDE_DIR/mcp.json"
-    echo -e "  ${GREEN}Installed${NC} mcp.json (edit to add tokens if you use GitHub MCP)"
+# MCP servers — Claude Code reads user-scoped servers from ~/.claude.json, never
+# ~/.claude/mcp.json, so register them through the CLI instead of copying a file.
+register_mcp() {
+  local name="$1"; shift
+  if claude mcp get "$name" >/dev/null 2>&1; then
+    echo -e "  ${YELLOW}Skipped${NC} MCP server $name (already registered)"
+  elif [ "$DRY_RUN" = true ]; then
+    echo -e "  ${BLUE}[dry-run]${NC} Would register MCP server $name"
+  elif claude mcp add --scope user "$name" -- "$@" >/dev/null 2>&1; then
+    echo -e "  ${GREEN}Registered${NC} MCP server $name (user scope)"
+  else
+    echo -e "  ${RED}Failed${NC} to register MCP server $name — run: claude mcp add --scope user $name -- $*"
+  fi
+}
+
+if [[ " ${COMPONENTS[*]} " == *" mcp "* ]]; then
+  if command -v claude >/dev/null 2>&1; then
+    register_mcp context7 npx -y @upstash/context7-mcp@latest
+    register_mcp playwright npx -y @playwright/mcp --browser chrome
+  else
+    echo -e "  ${YELLOW}Skipped${NC} MCP servers (claude CLI not on PATH) — see mcp.json for the commands"
   fi
 fi
 
@@ -301,7 +305,7 @@ fi
 echo ""
 echo "Next steps:"
 echo "  1. Restart Claude Code for changes to take effect"
-echo "  2. (Optional) Edit ~/.claude/mcp.json to add your GitHub token"
-echo "  3. Try: /plan, /tdd, /verify, /code-review"
+echo "  2. Check MCP servers with: claude mcp list"
+echo "  3. Try: /tdd, /verify, /build-fix, or the built-in /code-review"
 echo ""
 echo -e "Run ${YELLOW}./install.sh --uninstall${NC} to remove."

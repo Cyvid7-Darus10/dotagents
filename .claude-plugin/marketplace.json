@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "claude-code-config",
-  "description": "Production-ready Claude Code configuration — 33 agents, 67 commands, 66 skills, 66 rules for rapid app development.",
+  "description": "Lean, curated Claude Code configuration — 13 agents, 16 commands, 16 skills, curated rules. Trimmed from Everything Claude Code (ECC) to stay within context-budget best practices.",
   "owner": {
     "name": "Cyrus David Pastelero",
     "email": ""
@@ -13,8 +13,8 @@
     {
       "name": "claude-code-config",
       "source": "./",
-      "description": "33 agents, 67 commands, 66 skills, 66 rules — brainstorming, TDD, code review, security, multi-agent orchestration, and more.",
-      "version": "1.0.0",
+      "description": "Lean, curated Claude Code configuration — 13 agents, 16 commands, 16 skills, curated rules. Trimmed from Everything Claude Code (ECC) to stay within context-budget best practices.",
+      "version": "2.1.0",
       "author": {
         "name": "Cyrus David Pastelero"
       },

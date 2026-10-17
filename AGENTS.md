@@ -24,5 +24,6 @@ Curated setup (trimmed 2026-07-06 — full previous config in `~/.claude/backups
 | docs-lookup | Library/API documentation questions |
 | e2e-runner | Critical user flows |
 | refactor-cleaner | Dead code cleanup |
+| swift-reviewer | Swift / SwiftUI changes |
 
 Launch independent agents in parallel.
