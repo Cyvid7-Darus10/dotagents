@@ -16,8 +16,8 @@ Say what will happen: read-only inventory → a report on the current setup → 
 ## Phase 1: Inventory (read-only)
 
 1. Back up: `B=~/.claude/backups/pre-audit-$(date +%Y%m%d-%H%M%S); mkdir -p "$B"; cp ~/.claude/settings.json ~/.claude.json "$B"/ 2>/dev/null`.
-2. `python3 -I <skill>/scripts/inventory.py --json`: MCP servers per scope and disabled ones, plugins (skill counts, hooks), skills (auto vs manual, description size, uses), agents (with "MUST BE USED"/"PROACTIVELY" wording), commands, always-on vs path-scoped rules, memory index sizes, transcript history and median first-turn tokens.
-3. claude.ai connectors aren't in any file. List them from your own tool names (`mcp__claude_ai_<Name>__*`). Mark any that only expose `authenticate` as never signed in.
+2. `python3 -I <skill>/scripts/inventory.py --live --json`: MCP servers per scope and disabled ones, plugins (skills, servers, hooks, uses), skills (auto vs manual, description size, uses), agents (with "MUST BE USED"/"PROACTIVELY" wording), commands, always-on vs path-scoped rules, memory index sizes, transcript history and median first-turn tokens. `--live` adds each server's connection status from `claude mcp list`, claude.ai connectors and plugin servers included.
+3. Start from its `findings`: unused, failing, never-signed-in and duplicate servers (the same endpoint as a claude.ai connector and a local or plugin server), unused plugins, a skill listing over Claude Code's budget (descriptions past it get cut, so auto-picking breaks), oversized memory indexes and pushy agents. Check each one before you report it. Without `--live`, list claude.ai connectors from your own tool names (`mcp__claude_ai_<Name>__*`) and mark any that only expose `authenticate` as never signed in.
 4. Other agents: `~/.codex/AGENTS.md`, `~/.codex/config.toml` (`[mcp_servers]`), `~/.gemini/GEMINI.md`, `~/.gemini/settings.json`, `~/.cursor/mcp.json`.
 5. Their stack: project folders (`~/.claude.json` → `projects`) and what they're built with (package.json, Package.swift, pyproject.toml, go.mod…).
 6. Ask before measuring. If they agree: `python3 -I <skill>/scripts/measure.py --cwd <their usual folder> --reps 2`.
@@ -59,8 +59,11 @@ Show `./install.sh --dry-run [--skills …]` output as part of the plan. Ask onc
 | Disable | Never signed in, a duplicate, or unrelated to the stack | `/mcp` toggle (per project); claude.ai connector → disconnect on claude.ai to remove it everywhere |
 | Archive | Unused, and overlaps a built-in or another skill | `mv` to `~/.claude/archive/{skills,agents}/` |
 | De-push | Agent description says "MUST BE USED"/"PROACTIVELY" | rewrite as when it helps |
+| Dedupe | Same endpoint loaded twice (claude.ai connector + local/plugin server) | keep the one with uses; remove or `/mcp`-disable the other |
+| Trim index | A `MEMORY.md` over ~8 KB (it loads every session) | back it up, shorten each line to a hook, check that every link survives |
+| Owner-only | claude.ai connectors and plugins synced from claude.ai | list them for the user to disconnect on claude.ai, or set `syncClaudeAiPlugins: false` |
 
-Before archiving a skill, grep the kept skills for its name, since another skill may call it. Plugin-bundled skills can't be hidden with `skillOverrides`. Disable or scope the plugin instead.
+Before archiving a skill, grep the kept skills for its name, since another skill may call it. Point those references at something kept. Plugin-bundled skills can't be hidden with `skillOverrides`. Disable or scope the plugin instead.
 
 ## Phase 5: Apply
 

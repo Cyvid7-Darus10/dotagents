@@ -35,6 +35,19 @@ Reference point from real usage: interactive sessions on the old setup started a
 4. **Framework plugins cost about 18 tokens per skill** (Vercel: 0.9k for 49 skills). Enable them only in the projects that use them.
 5. **Trimming skills, agents and rules saves little at startup:** 251 tokens here, because descriptions are short and language rules were already path-scoped. Do it for other reasons: fewer wrong auto-picks, no reflexive subagent spawning from "MUST BE USED" wording, and one source of truth across agents.
 
+## Second machine: a full audit after a plain install (2026-11-22)
+
+A setup that had run `install.sh` without the audit, then ran the audit end to end. Headless `claude -p`, Opus, `--reps 2`, same folder before and after.
+
+| Condition | Before | After | Change |
+|---|---|---|---|
+| Current setup (median) | 55,030 | 47,457 | **−7,573 (−14%)** |
+| claude.ai connectors off | 48,068 | 42,829 | −5,239 |
+
+What was changed: three plugins with 0 uses in 236 days of transcripts turned off (28 skills, 7 servers that were never signed in), 10 local MCP servers removed (unused, failing, or duplicates of a claude.ai connector), 4 overlapping skills and 2 agents archived, and a 17.7 KB memory index cut to 8.3 KB with every link kept. Connectors were left to the owner to disconnect on claude.ai, so about 4.6k of connector cost remains.
+
+Lessons that went back into the tooling: `install.sh` alone adds and never removes, so it now says so and points to the audit. `inventory.py` now reports ranked findings, connection status (`--live`), duplicate endpoints and skill-listing overflow, and no longer counts reference copies of skills or misses symlinked rules.
+
 ## Not yet measured
 
 - Interactive-session startup after the cleanup. Run `/context` after restarting, or wait for transcripts. `setup-audit` Phase 6 does this.

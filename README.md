@@ -33,7 +33,9 @@ cd dotagents
 claude        # or: codex, gemini
 ```
 
-Opening an agent in the repo starts **audit mode** ([`AGENTS.md`](AGENTS.md)). You can also skip the audit:
+Opening an agent in the repo starts **audit mode** ([`AGENTS.md`](AGENTS.md)): the hygiene check that finds unused, duplicate, failing and never-signed-in connectors, plugins and skills, and removes them with your approval.
+
+You can also skip the audit. `install.sh` on its own only **adds** this repo's files; it removes nothing, so a crowded setup stays crowded. Run the audit afterwards (`python3 -I skills/setup-audit/scripts/inventory.py --live` previews its findings, read-only):
 
 ```bash
 ./install.sh --dry-run                 # preview every change

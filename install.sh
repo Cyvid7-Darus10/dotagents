@@ -80,12 +80,33 @@ install_global_instructions() {
   link "$REPO/global/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
   if [ -d "$HOME/.codex" ]; then link "$REPO/global/AGENTS.md" "$HOME/.codex/AGENTS.md"; fi
   if [ -d "$HOME/.gemini" ]; then link "$REPO/global/AGENTS.md" "$HOME/.gemini/GEMINI.md"; fi
-  # Common rules are folded into global/AGENTS.md; an old copy would load twice.
-  if [ -d "$CLAUDE_DIR/rules/common" ] && [ ! -L "$CLAUDE_DIR/rules/common" ]; then
-    ensure_dir "$BACKUP_DIR/.claude/rules"
-    run mv "$CLAUDE_DIR/rules/common" "$BACKUP_DIR/.claude/rules/common"
-    say "moved ~/.claude/rules/common to backup (now in AGENTS.md)"
-  fi
+  retire_common_rules
+}
+
+# Common rules from earlier versions are folded into global/AGENTS.md; an old copy would
+# load twice. Only those known files go to the backup. Any rule the user wrote themselves
+# moves up to ~/.claude/rules/ so it keeps loading.
+FOLDED_RULES="coding-style git-workflow multi-repo-consistency security testing agents hooks patterns performance development-workflow"
+retire_common_rules() {
+  local common="$CLAUDE_DIR/rules/common" rule name
+  [ -d "$common" ] && [ ! -L "$common" ] || return 0
+  ensure_dir "$BACKUP_DIR/.claude/rules"
+  run cp -R "$common" "$BACKUP_DIR/.claude/rules/common"
+  for rule in "$common"/*.md; do
+    [ -e "$rule" ] || continue
+    name="$(basename "$rule" .md)"
+    if [[ " $FOLDED_RULES " == *" $name "* ]]; then
+      run rm "$rule"
+    elif [ -e "$CLAUDE_DIR/rules/$name.md" ]; then
+      say "kept ~/.claude/rules/common/$name.md (a rules/$name.md already exists)"
+      continue
+    else
+      run mv "$rule" "$CLAUDE_DIR/rules/$name.md"
+      say "kept your rule: moved rules/common/$name.md to rules/$name.md"
+    fi
+  done
+  if $DRY_RUN || [ -z "$(ls -A "$common" 2>/dev/null)" ]; then run rmdir "$common"; fi
+  say "retired ~/.claude/rules/common (now in AGENTS.md; copy in backup)"
 }
 
 # Print the skill names to install: all, or the validated --skills list.
@@ -175,6 +196,11 @@ main() {
   echo
   [ -d "$BACKUP_DIR" ] && echo "Backups: $BACKUP_DIR"
   echo "Done. Restart your agent, then run /context to see the startup cost."
+  echo
+  echo "Note: install.sh only adds and links files. It does not remove unused connectors,"
+  echo "MCP servers, plugins or skills. For that hygiene check, open your agent in this repo"
+  echo "(it starts audit mode) or ask it to run the setup-audit skill. Read-only preview:"
+  echo "  python3 -I \"$REPO/skills/setup-audit/scripts/inventory.py\" --live"
 }
 
 main

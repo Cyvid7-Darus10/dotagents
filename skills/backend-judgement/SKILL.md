@@ -117,4 +117,4 @@ Any schema change must additionally answer:
 - `systematic-reasoning` before designing the change.
 - `api-design` for endpoint shape.
 - `database-migrations` for schema work.
-- `security-review` after the change lands.
+- The `security-reviewer` agent after the change lands.

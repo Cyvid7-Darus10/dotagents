@@ -3,14 +3,22 @@
 
 Prints a markdown report of installed MCP servers, plugins, skills, agents,
 commands, always-on instructions and memory, with sizes and usage counts
-mined from local transcripts. It changes nothing on disk.
+mined from local transcripts, then a ranked list of hygiene findings
+(unused, duplicate, failing or never-signed-in items, an overflowing skill
+listing, an oversized memory index). It changes nothing on disk.
 
-Usage: python3 inventory.py [--json] [--days N]
+--live also runs `claude mcp list` to get each server's connection status,
+including claude.ai connectors. That starts every configured server once.
+
+Usage: python3 inventory.py [--json] [--days N] [--live]
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
+import subprocess
 import re
 import statistics
 import sys
@@ -24,6 +32,12 @@ CLAUDE_DIR = HOME / ".claude"
 CLAUDE_JSON = HOME / ".claude.json"
 PUSHY_WORDS = re.compile(r"MUST BE USED|PROACTIVELY|use immediately", re.I)
 COMMAND_TAG = re.compile(r"<command-name>/?([^<]+)</command-name>")
+# Claude Code lists model-invocable skills in a budget of about 1% of the context
+# window (fallback 8,000 characters; override with SLASH_COMMAND_TOOL_CHAR_BUDGET).
+# Past it, descriptions are cut and the model can no longer tell when a skill fits.
+SKILL_LISTING_BUDGET_CHARS = int(os.environ.get("SLASH_COMMAND_TOOL_CHAR_BUDGET", "8000"))
+# MEMORY.md is loaded into every session in its project; past this, trim the index.
+MEMORY_INDEX_BUDGET_BYTES = 8000
 
 
 @dataclass
@@ -149,7 +163,8 @@ def mcp_section(usage: Usage) -> dict:
 
 def skill_rows(root: Path, source: str, usage: Usage) -> list[dict]:
     rows = []
-    for skill_md in sorted(root.glob("*/SKILL.md")) + sorted(root.glob("*/*/SKILL.md")):
+    nested = [p for p in sorted(root.glob("*/*/SKILL.md")) if not (p.parent.parent / "SKILL.md").exists()]
+    for skill_md in sorted(root.glob("*/SKILL.md")) + nested:
         meta = frontmatter(skill_md)
         name = meta.get("name") or skill_md.parent.name
         rows.append({
@@ -170,11 +185,21 @@ def plugin_section(settings: dict, usage: Usage) -> tuple[dict, list[dict]]:
     for plugin_id, installs in installed.items():
         install_path = Path(installs[0]["installPath"]) if installs else None
         short = plugin_id.split("@")[0]
+        is_enabled = bool(enabled.get(plugin_id))
         plugin_skills = skill_rows(install_path / "skills", f"plugin:{short}", usage) if install_path else []
         for row in plugin_skills:
             row["uses"] = usage.skills.get(f"{short}:{row['name']}", 0)
+            row["enabled"] = is_enabled
         hooks = (install_path / "hooks" / "hooks.json").exists() if install_path else False
-        plugins[plugin_id] = {"enabled": bool(enabled.get(plugin_id)), "skills": len(plugin_skills), "has_hooks": hooks}
+        servers = list(load_json(install_path / ".mcp.json").get("mcpServers", {})) if install_path else []
+        mcp_uses = sum(n for prefix, n in usage.mcp.items() if prefix.startswith(f"mcp__plugin_{short}_"))
+        plugins[plugin_id] = {
+            "enabled": is_enabled,
+            "skills": len(plugin_skills),
+            "mcp_servers": servers,
+            "has_hooks": hooks,
+            "uses": sum(r["uses"] for r in plugin_skills) + mcp_uses,
+        }
         skills.extend(plugin_skills)
     synced = list((CLAUDE_DIR / "plugins" / "synced").glob("*/manifest.json"))
     plugins["(claude.ai synced)"] = {"count": sum(len(load_json(m).get("plugins", [])) for m in synced)}
@@ -196,13 +221,21 @@ def agents_and_commands(usage: Usage) -> dict:
     return {"agents": agents, "commands": commands, "builtin_agent_uses": dict(usage.agents.most_common())}
 
 
+def walk_markdown(root: Path) -> list[Path]:
+    """All .md files under root, following symlinked folders (install.sh links rules/<lang>)."""
+    found = []
+    for folder, _dirs, names in os.walk(root, followlinks=True):
+        found.extend(Path(folder) / n for n in names if n.endswith(".md"))
+    return found
+
+
 def instructions_section() -> dict:
     files = {}
     for path in [CLAUDE_DIR / "CLAUDE.md", CLAUDE_DIR / "AGENTS.md", HOME / ".codex" / "AGENTS.md", HOME / ".gemini" / "GEMINI.md"]:
         if path.exists():
             files[str(path)] = {"bytes": path.stat().st_size, "symlink_to": str(path.resolve()) if path.is_symlink() else None}
     rules_always, rules_scoped = 0, 0
-    for rule in (CLAUDE_DIR / "rules").rglob("*.md"):
+    for rule in walk_markdown(CLAUDE_DIR / "rules"):
         size = rule.stat().st_size
         if "paths" in frontmatter(rule):
             rules_scoped += size
@@ -224,7 +257,85 @@ def settings_section(settings: dict) -> dict:
     }
 
 
-def build_report(days: int) -> dict:
+def live_mcp_status() -> list[dict]:
+    """Parse `claude mcp list`: one row per server, claude.ai connectors and plugin servers included."""
+    if not shutil.which("claude"):
+        return []
+    try:
+        out = subprocess.run(["claude", "mcp", "list"], capture_output=True, text=True, timeout=180).stdout
+    except (OSError, subprocess.TimeoutExpired) as err:
+        print(f"warning: claude mcp list failed: {err}", file=sys.stderr)
+        return []
+    rows = []
+    for line in out.splitlines():
+        if ": " not in line or " - " not in line:
+            continue
+        name, rest = line.split(": ", 1)
+        target, status = rest.rsplit(" - ", 1)
+        target = target.replace("(HTTP)", "").replace("(SSE)", "").strip()
+        state = "connected" if "Connected" in status else "needs_auth" if "authentication" in status else "failed"
+        rows.append({"name": name.strip(), "target": target, "state": state})
+    return rows
+
+
+def usage_prefix(server: str) -> str:
+    """Map a `claude mcp list` name to the tool-name prefix seen in transcripts."""
+    if server.startswith("claude.ai "):
+        return "mcp__claude_ai_" + re.sub(r"\W", "_", server[len("claude.ai "):])
+    if server.startswith("plugin:"):
+        _, plugin, name = server.split(":", 2)
+        return f"mcp__plugin_{plugin}_{name}"
+    return f"mcp__{server}"
+
+
+def finding(kind: str, item: str, evidence: str, suggestion: str) -> dict:
+    return {"kind": kind, "item": item, "evidence": evidence, "suggestion": suggestion}
+
+
+def server_findings(report: dict, live: list[dict], history_days: float) -> list[dict]:
+    mcp_uses = report["mcp"]["usage_by_prefix"]
+    out = []
+    by_target: dict[str, list[str]] = {}
+    for row in live:
+        uses = sum(n for prefix, n in mcp_uses.items() if prefix.lower().startswith(usage_prefix(row["name"]).lower()))
+        if row["state"] == "failed":
+            out.append(finding("failing", row["name"], "fails to connect at startup", "fix it or remove it"))
+        elif row["state"] == "needs_auth" and uses == 0:
+            out.append(finding("never signed in", row["name"], "only exposes authenticate tools, 0 uses", "remove, or disconnect on claude.ai"))
+        elif uses == 0:
+            out.append(finding("unused", row["name"], f"0 tool calls in {history_days:.0f} days", "disable or scope to a project"))
+        if row["target"].startswith("http"):
+            by_target.setdefault(row["target"].rstrip("/"), []).append(row["name"])
+    for target, names in by_target.items():
+        if len(names) > 1:
+            out.append(finding("duplicate", " + ".join(names), f"same endpoint {target}", "keep the one you use, remove the rest"))
+    if not live:
+        for server in report["mcp"]["user_scope"]:
+            if not any(p.startswith(f"mcp__{server}") for p in mcp_uses):
+                out.append(finding("unused", server, f"0 tool calls in {history_days:.0f} days", "remove (run with --live for status)"))
+    return out
+
+
+def setup_findings(report: dict, history_days: float) -> list[dict]:
+    out = []
+    for plugin_id, info in report["plugins"].items():
+        if info.get("enabled") and info.get("uses") == 0 and (info.get("skills") or info.get("mcp_servers")):
+            out.append(finding("unused plugin", plugin_id, f"{info['skills']} skills, {len(info['mcp_servers'])} servers, 0 uses", "disable; re-enable per project when needed"))
+    listed = [s for s in report["skills"] if s["model_invocable"] and s.get("enabled", True)]
+    listing_chars = sum(s["description_chars"] for s in listed)
+    if listing_chars > SKILL_LISTING_BUDGET_CHARS:
+        unused = sum(1 for s in listed if s["uses"] == 0)
+        out.append(finding("skill listing overflow", f"{len(listed)} auto skills", f"{listing_chars} description chars vs ~{SKILL_LISTING_BUDGET_CHARS} budget; {unused} never used", "archive unused skills, disable idle plugins, make rare ones manual"))
+    for path, size in report["instructions"]["memory_indexes"]:
+        if size > MEMORY_INDEX_BUDGET_BYTES:
+            out.append(finding("memory index too big", path, f"{size} bytes loaded every session", f"shorten each line to a hook, aim under {MEMORY_INDEX_BUDGET_BYTES} bytes"))
+    for agent in report["agents"]:
+        if agent["pushy"]:
+            out.append(finding("pushy agent", agent["name"], "description says MUST BE USED / PROACTIVELY", "rewrite as when it helps"))
+    return out
+
+
+def build_report(days: int, live: bool = False) -> dict:
     settings = load_json(CLAUDE_DIR / "settings.json")
     usage = scan_transcripts(days)
     plugins, plugin_skills = plugin_section(settings, usage)
@@ -233,7 +344,7 @@ def build_report(days: int) -> dict:
     for row in synced:
         row["source"] = "claude.ai-synced"
     baseline = usage.baseline_tokens
-    return {
+    report = {
         "transcripts": {
             "sessions": usage.sessions,
             "history_days": round(usage.oldest_days, 1),
@@ -246,12 +357,20 @@ def build_report(days: int) -> dict:
         **agents_and_commands(usage),
         "instructions": instructions_section(),
     }
+    servers = live_mcp_status() if live else []
+    report["mcp"]["live"] = servers
+    report["findings"] = server_findings(report, servers, usage.oldest_days) + setup_findings(report, usage.oldest_days)
+    return report
 
 
 def print_markdown(report: dict) -> None:
     t = report["transcripts"]
     print(f"# Setup inventory\n\nTranscripts: {t['sessions']} sessions over {t['history_days']} days; "
           f"median first-turn input: {t['median_first_turn_input_tokens']} tokens\n")
+    print(f"## Findings ({len(report['findings'])})")
+    for f in report["findings"]:
+        print(f"- **{f['kind']}**: {f['item']} ({f['evidence']}) -> {f['suggestion']}")
+    print()
     print("## Settings\n```json\n" + json.dumps(report["settings"], indent=2) + "\n```\n")
     print("## MCP\n```json\n" + json.dumps(report["mcp"], indent=2) + "\n```\n")
     print("## Plugins\n```json\n" + json.dumps(report["plugins"], indent=2) + "\n```\n")
@@ -271,11 +390,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit JSON instead of markdown")
     parser.add_argument("--days", type=int, default=365, help="transcript window in days (default 365)")
+    parser.add_argument("--live", action="store_true", help="also run `claude mcp list` for connection status")
     args = parser.parse_args()
     if not CLAUDE_DIR.exists():
         print(f"No Claude Code config at {CLAUDE_DIR}", file=sys.stderr)
         return 1
-    report = build_report(args.days)
+    report = build_report(args.days, live=args.live)
     if args.json:
         print(json.dumps(report, indent=2))
     else:
