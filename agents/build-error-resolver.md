@@ -1,6 +1,6 @@
 ---
 name: build-error-resolver
-description: Build and TypeScript error resolution specialist. Use PROACTIVELY when build fails or type errors occur. Fixes build/type errors only with minimal diffs, no architectural edits. Focuses on getting the build green quickly.
+description: Fixes build and type errors with minimal diffs and no architectural edits. Use when a build or typecheck fails and the cause isn't obvious.
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 model: sonnet
 ---
@@ -104,8 +104,8 @@ npx eslint . --fix
 ## When NOT to Use
 
 - Code needs refactoring → use `refactor-cleaner`
-- Architecture changes needed → use `architect`
-- New features required → use `planner`
+- Architecture changes needed → stop and use plan mode
+- New features required → stop and plan with the user
 - Tests failing → use `tdd-guide`
 - Security issues → use `security-reviewer`
 

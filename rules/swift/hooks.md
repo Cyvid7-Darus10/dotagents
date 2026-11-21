@@ -5,7 +5,7 @@ paths:
 ---
 # Swift Hooks
 
-> This file extends [common/hooks.md](../common/hooks.md) with Swift specific content.
+> Extends the global `AGENTS.md` with Swift-specific guidance.
 
 ## PostToolUse Hooks
 

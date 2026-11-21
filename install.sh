@@ -1,311 +1,176 @@
-#!/bin/bash
-# Install claude-code-config into $HOME/.claude
-# Zero runtime dependencies — hooks use pure bash. git is optional for updates.
-set -e
+#!/usr/bin/env bash
+# Install this agent setup by symlinking it into ~/.claude (plus Codex/Gemini when present).
+# Symlinks mean edits in the repo apply live and never drift. Anything replaced is backed up.
+set -euo pipefail
 
-CLAUDE_DIR="$HOME/.claude"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 BACKUP_DIR="$CLAUDE_DIR/backups/pre-install-$(date +%Y%m%d-%H%M%S)"
-
-# Colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+DRY_RUN=false
+WITH_PLUGINS=true
+WITH_HOOKS=false
+WITH_SOUNDS=false
+WITH_ADHD=false
+SKILLS=""   # comma-separated; empty = all
 
 usage() {
   cat <<EOF
-Usage: ./install.sh [OPTIONS] [COMPONENTS...]
+Usage: ./install.sh [--dry-run] [--skills a,b,c] [--no-plugins] [--adhd] [--hooks] [--sounds]
 
-Components (default: agents, commands, skills, rules, mcp):
-  agents       12 specialized subagents
-  commands     16 slash commands
-  skills       18 workflow skills
-  rules        curated coding rules (common + python/swift/typescript)
-  mcp          MCP server configs (context7, playwright)
-  sounds       Optional macOS notification sounds
-  hooks        Node.js token-saving hooks (requires Node.js) -- OPT-IN
-  security     Security framework documentation -- OPT-IN
-
-Options:
-  --no-backup   Skip backing up existing config
-  --uninstall   Remove installed components
-  --dry-run     Show what would be installed
-  --minimal     Install only agents, commands, skills, rules (no hooks at all)
-  --full        Install everything including the Node.js quality-gate hooks
-  -h, --help    Show this help
-
-Examples:
-  ./install.sh                    # Default install (zero runtime dependencies)
-  ./install.sh --minimal          # Just agents + skills + commands + rules
-  ./install.sh --full             # Include Node.js quality-gate hooks
-  ./install.sh agents skills      # Pick specific components
-  ./install.sh --dry-run          # Preview
-  ./install.sh --uninstall        # Remove all components
+Installs (symlinks):
+  global/AGENTS.md   -> ~/.claude/AGENTS.md, ~/.codex/AGENTS.md, ~/.gemini/GEMINI.md
+  global/CLAUDE.md   -> ~/.claude/CLAUDE.md (imports AGENTS.md)
+  skills/*           -> ~/.claude/skills/ (and ~/.agents/skills/ if it exists)
+  agents/*, commands/* -> ~/.claude/agents/, ~/.claude/commands/
+  rules/<lang>/      -> ~/.claude/rules/<lang>/ (path-scoped)
+Configures:
+  personal_docs/ in the global git excludes file
+  settings.json: cleanupPeriodDays=90 (if unset), permission deny list (merged)
+  plugins i-have-adhd + context7 MCP (skip: --no-plugins)
+Opt-in:
+  --hooks   token-saving Read/PostToolUse hooks (needs Node 18+)
+  --sounds  macOS notification sounds on Stop/Notification
+Choices:
+  --skills a,b,c  link only these skills (default: all in skills/)
+  --adhd          turn on i-have-adhd for every session (+~2.5k tokens/session)
 EOF
 }
 
-# Parse options
-BACKUP=true
-UNINSTALL=false
-DRY_RUN=false
-MINIMAL=false
-FULL=false
-COMPONENTS=()
-
 while [[ $# -gt 0 ]]; do
-  case $1 in
-    --no-backup) BACKUP=false; shift ;;
-    --uninstall) UNINSTALL=true; shift ;;
-    --dry-run)   DRY_RUN=true; shift ;;
-    --minimal)   MINIMAL=true; shift ;;
-    --full)      FULL=true; shift ;;
-    -h|--help)   usage; exit 0 ;;
-    full)        FULL=true; shift ;;
-    *)           COMPONENTS+=("$1"); shift ;;
-  esac
-done
-
-# Default: zero runtime dependencies. Node-based 'hooks/' is opt-in.
-DEFAULT_COMPONENTS=(agents commands skills rules mcp)
-MINIMAL_COMPONENTS=(agents commands skills rules)
-FULL_COMPONENTS=(agents commands skills rules mcp sounds hooks)
-# Used by --uninstall with no args: every component the installer can touch.
-ALL_COMPONENTS=(agents commands skills rules monitoring mcp sounds hooks security)
-
-# Valid component names (for input validation). Keep in sync with get_dirs_for_component().
-VALID_COMPONENTS=(agents commands skills rules monitoring mcp sounds hooks security)
-
-is_valid_component() {
-  local c="$1"
-  for v in "${VALID_COMPONENTS[@]}"; do
-    [ "$c" = "$v" ] && return 0
-  done
-  return 1
-}
-
-# Validate any components passed as positional args. Warn on unknown and drop them.
-if [ ${#COMPONENTS[@]} -gt 0 ]; then
-  VALIDATED=()
-  for comp in "${COMPONENTS[@]}"; do
-    if is_valid_component "$comp"; then
-      VALIDATED+=("$comp")
-    else
-      echo -e "${YELLOW}WARNING${NC}: Unknown component '$comp' — ignored."
-      echo "         Valid components: ${VALID_COMPONENTS[*]}"
-    fi
-  done
-  COMPONENTS=("${VALIDATED[@]}")
-fi
-
-if [ ${#COMPONENTS[@]} -eq 0 ]; then
-  if [ "$MINIMAL" = true ]; then
-    COMPONENTS=("${MINIMAL_COMPONENTS[@]}")
-  elif [ "$FULL" = true ]; then
-    COMPONENTS=("${FULL_COMPONENTS[@]}")
-  elif [ "$UNINSTALL" = true ]; then
-    # Uninstall with no args → remove EVERY component this installer can place,
-    # so opt-in extras (hooks/scripts/sounds/security) don't get orphaned.
-    COMPONENTS=("${ALL_COMPONENTS[@]}")
-  else
-    COMPONENTS=("${DEFAULT_COMPONENTS[@]}")
-  fi
-fi
-
-# Warn if user picked the Node-dep 'hooks' component without Node installed.
-for comp in "${COMPONENTS[@]}"; do
-  if [ "$comp" = "hooks" ] && ! command -v node >/dev/null 2>&1; then
-    echo -e "\033[1;33mWARNING\033[0m: 'hooks' component requires Node.js, which was not found on PATH."
-    echo "         Install Node.js 18+ or omit the 'hooks' component (they're opt-in)."
-    echo ""
-  fi
-done
-
-# Map component names to directories
-get_dirs_for_component() {
   case "$1" in
-    agents)     echo "agents" ;;
-    commands)   echo "commands" ;;
-    skills)     echo "skills" ;;
-    rules)      echo "rules" ;;
-    hooks)      echo "hooks scripts" ;;
-    monitoring) echo "monitoring" ;;
-    sounds)     echo "sounds" ;;
-    mcp)        echo "mcp-configs" ;;
-    security)   echo "security" ;;
-    *)          echo "" ;;
+    --dry-run) DRY_RUN=true ;;
+    --no-plugins) WITH_PLUGINS=false ;;
+    --hooks) WITH_HOOKS=true ;;
+    --sounds) WITH_SOUNDS=true ;;
+    --adhd) WITH_ADHD=true ;;
+    --skills) SKILLS="${2:?--skills needs a comma-separated list}"; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
   esac
-}
-
-# --- Preflight: hard requirement = bash 3.2+ (ships with macOS). Soft = git. ---
-preflight() {
-  if [ -z "${BASH_VERSION:-}" ]; then
-    echo -e "${RED}This installer needs bash.${NC}"
-    exit 1
-  fi
-  if ! command -v git >/dev/null 2>&1; then
-    echo -e "${YELLOW}Note: git is not installed. It's only needed for updates; core features work without it.${NC}"
-  fi
-}
-preflight
-
-# --- Uninstall ---
-if [ "$UNINSTALL" = true ]; then
-  echo -e "${YELLOW}Uninstalling claude-code-config from $CLAUDE_DIR${NC}"
-  for comp in "${COMPONENTS[@]}"; do
-    dirs=$(get_dirs_for_component "$comp")
-    for dir in $dirs; do
-      if [ -d "$CLAUDE_DIR/$dir" ]; then
-        if [ "$DRY_RUN" = true ]; then
-          echo -e "  ${BLUE}[dry-run]${NC} Would remove $CLAUDE_DIR/$dir/"
-        else
-          rm -rf "$CLAUDE_DIR/$dir"
-          echo -e "  ${RED}Removed${NC} $dir/"
-        fi
-      fi
-    done
-  done
-  echo -e "${GREEN}Uninstall complete.${NC}"
-  exit 0
-fi
-
-# --- Install ---
-echo -e "${GREEN}Installing claude-code-config to $CLAUDE_DIR${NC}"
-echo ""
-
-mkdir -p "$CLAUDE_DIR"
-
-# Backup existing config if anything overlaps
-if [ "$BACKUP" = true ]; then
-  HAS_EXISTING=false
-  for comp in "${COMPONENTS[@]}"; do
-    dirs=$(get_dirs_for_component "$comp")
-    for dir in $dirs; do
-      [ -d "$CLAUDE_DIR/$dir" ] && HAS_EXISTING=true
-    done
-  done
-
-  if [ "$HAS_EXISTING" = true ]; then
-    if [ "$DRY_RUN" = true ]; then
-      echo -e "${BLUE}[dry-run]${NC} Would backup existing config to $BACKUP_DIR"
-    else
-      mkdir -p "$BACKUP_DIR"
-      for comp in "${COMPONENTS[@]}"; do
-        dirs=$(get_dirs_for_component "$comp")
-        for dir in $dirs; do
-          [ -d "$CLAUDE_DIR/$dir" ] && cp -r "$CLAUDE_DIR/$dir" "$BACKUP_DIR/$dir" 2>/dev/null || true
-        done
-      done
-      echo -e "${BLUE}Backed up existing config to:${NC}"
-      echo "  $BACKUP_DIR"
-      echo ""
-    fi
-  fi
-fi
-
-# Install component directories
-INSTALLED=0
-for comp in "${COMPONENTS[@]}"; do
-  dirs=$(get_dirs_for_component "$comp")
-  for dir in $dirs; do
-    if [ -d "$SCRIPT_DIR/$dir" ]; then
-      count=$(find "$SCRIPT_DIR/$dir" -type f | wc -l | tr -d ' ')
-      if [ "$DRY_RUN" = true ]; then
-        echo -e "  ${BLUE}[dry-run]${NC} Would install $dir/ ($count files)"
-      else
-        mkdir -p "$CLAUDE_DIR/$dir"
-        cp -r "$SCRIPT_DIR/$dir/"* "$CLAUDE_DIR/$dir/"
-        # Ensure shell scripts are executable (tar/zip distributions may lose the bit)
-        find "$CLAUDE_DIR/$dir" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
-        echo -e "  ${GREEN}Installed${NC} $dir/ ($count files)"
-        INSTALLED=$((INSTALLED + count))
-      fi
-    fi
-  done
+  shift
 done
 
-# Top-level metadata (AGENTS.md, plugin manifest) is NOT copied to ~/.claude/:
-# Claude Code loads ~/.claude/AGENTS.md into every session, and the manifest is
-# only read from a plugin's .claude-plugin/ directory.
-echo ""
+say() { printf '  %s\n' "$*"; }
+run() { if $DRY_RUN; then say "[dry-run] $*"; else "$@"; fi; }
+ensure_dir() { $DRY_RUN || mkdir -p "$1"; }
 
-# settings.json — don't clobber user customisations
-if [ -f "$CLAUDE_DIR/settings.json" ]; then
-  echo -e "  ${YELLOW}Skipped${NC} settings.json (already exists — see repo for reference)"
-else
-  if [ "$DRY_RUN" = false ]; then
-    cp "$SCRIPT_DIR/settings.json" "$CLAUDE_DIR/settings.json"
-    echo -e "  ${GREEN}Installed${NC} settings.json"
+# link SRC DEST: replace a symlink, back up a real file/dir, then link.
+link() {
+  local src="$1" dest="$2"
+  if [ -L "$dest" ] && [ "$(readlink "$dest")" = "$src" ]; then return 0; fi
+  ensure_dir "$(dirname "$dest")"
+  if [ -L "$dest" ]; then
+    run rm "$dest"
+  elif [ -e "$dest" ]; then
+    local rel="${dest#"$HOME"/}"
+    ensure_dir "$BACKUP_DIR/$(dirname "$rel")"
+    run mv "$dest" "$BACKUP_DIR/$rel"
+    say "backed up ~/$rel"
   fi
-fi
+  run ln -s "$src" "$dest"
+  say "linked ~/${dest#"$HOME"/}"
+}
 
-# MCP servers — Claude Code reads user-scoped servers from ~/.claude.json, never
-# ~/.claude/mcp.json, so register them through the CLI instead of copying a file.
-register_mcp() {
-  local name="$1"; shift
-  if claude mcp get "$name" >/dev/null 2>&1; then
-    echo -e "  ${YELLOW}Skipped${NC} MCP server $name (already registered)"
-  elif [ "$DRY_RUN" = true ]; then
-    echo -e "  ${BLUE}[dry-run]${NC} Would register MCP server $name"
-  elif claude mcp add --scope user "$name" -- "$@" >/dev/null 2>&1; then
-    echo -e "  ${GREEN}Registered${NC} MCP server $name (user scope)"
-  else
-    echo -e "  ${RED}Failed${NC} to register MCP server $name — run: claude mcp add --scope user $name -- $*"
+install_global_instructions() {
+  echo "Global instructions"
+  link "$REPO/global/AGENTS.md" "$CLAUDE_DIR/AGENTS.md"
+  link "$REPO/global/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
+  if [ -d "$HOME/.codex" ]; then link "$REPO/global/AGENTS.md" "$HOME/.codex/AGENTS.md"; fi
+  if [ -d "$HOME/.gemini" ]; then link "$REPO/global/AGENTS.md" "$HOME/.gemini/GEMINI.md"; fi
+  # Common rules are folded into global/AGENTS.md; an old copy would load twice.
+  if [ -d "$CLAUDE_DIR/rules/common" ] && [ ! -L "$CLAUDE_DIR/rules/common" ]; then
+    ensure_dir "$BACKUP_DIR/.claude/rules"
+    run mv "$CLAUDE_DIR/rules/common" "$BACKUP_DIR/.claude/rules/common"
+    say "moved ~/.claude/rules/common to backup (now in AGENTS.md)"
   fi
 }
 
-if [[ " ${COMPONENTS[*]} " == *" mcp "* ]]; then
-  if command -v claude >/dev/null 2>&1; then
-    register_mcp context7 npx -y @upstash/context7-mcp@latest
-    register_mcp playwright npx -y @playwright/mcp --browser chrome
-  else
-    echo -e "  ${YELLOW}Skipped${NC} MCP servers (claude CLI not on PATH) — see mcp.json for the commands"
+# Print the skill names to install: all, or the validated --skills list.
+selected_skills() {
+  if [ -z "$SKILLS" ]; then
+    for dir in "$REPO"/skills/*/; do basename "$dir"; done
+    return 0
   fi
-fi
-
-# --- Post-install verification ---
-if [ "$DRY_RUN" = false ]; then
-  echo ""
-  echo -e "${BLUE}Verifying installation...${NC}"
-  ERRORS=0
-
-  check_dir() {
-    if [ -d "$CLAUDE_DIR/$1" ] && [ "$(ls -A "$CLAUDE_DIR/$1" 2>/dev/null)" ]; then
-      echo -e "  ${GREEN}OK${NC}  $1/ ($(find "$CLAUDE_DIR/$1" -type f | wc -l | tr -d ' ') files)"
-    else
-      echo -e "  ${RED}FAIL${NC} $1/ is missing or empty"
-      ERRORS=$((ERRORS + 1))
-    fi
-  }
-
-  for comp in "${COMPONENTS[@]}"; do
-    dirs=$(get_dirs_for_component "$comp")
-    for dir in $dirs; do
-      check_dir "$dir"
-    done
+  local name
+  for name in ${SKILLS//,/ }; do
+    if [ -d "$REPO/skills/$name" ]; then echo "$name"; else echo "  unknown skill: $name (skipped)" >&2; fi
   done
+}
 
-  # Sanity: if hooks reference monitoring scripts, monitoring must be installed.
-  if grep -q "monitoring/hooks" "$CLAUDE_DIR/settings.json" 2>/dev/null; then
-    if [ ! -d "$CLAUDE_DIR/monitoring/hooks" ]; then
-      echo -e "  ${YELLOW}WARN${NC} settings.json references monitoring/hooks but that directory is missing."
-      echo -e "         Re-run with: ./install.sh monitoring"
-    fi
+install_components() {
+  echo "Skills, agents, commands, rules"
+  local dir name
+  for name in $(selected_skills); do
+    dir="$REPO/skills/$name"
+    link "$dir" "$CLAUDE_DIR/skills/$name"
+    if [ -d "$HOME/.agents/skills" ]; then link "$dir" "$HOME/.agents/skills/$name"; fi
+  done
+  for f in "$REPO"/agents/*.md; do link "$f" "$CLAUDE_DIR/agents/$(basename "$f")"; done
+  for f in "$REPO"/commands/*.md; do link "$f" "$CLAUDE_DIR/commands/$(basename "$f")"; done
+  for dir in "$REPO"/rules/*/; do link "${dir%/}" "$CLAUDE_DIR/rules/$(basename "$dir")"; done
+}
+
+install_git_excludes() {
+  echo "Global git excludes"
+  local excludes
+  excludes="$(git config --global core.excludesFile || true)"
+  if [ -z "$excludes" ]; then
+    excludes="$HOME/.config/git/ignore"
+    run git config --global core.excludesFile "$excludes"
   fi
-
-  echo ""
-  if [ $ERRORS -eq 0 ]; then
-    echo -e "${GREEN}Installation complete! ($INSTALLED files installed)${NC}"
+  excludes="${excludes/#\~/$HOME}"
+  if grep -qxF 'personal_docs/' "$excludes" 2>/dev/null; then
+    say "personal_docs/ already ignored in $excludes"
   else
-    echo -e "${RED}Installation completed with $ERRORS error(s).${NC}"
+    ensure_dir "$(dirname "$excludes")"
+    if $DRY_RUN; then say "[dry-run] append personal_docs/ to $excludes"; else printf '\n# Private per-project agent notes\npersonal_docs/\n' >> "$excludes"; fi
+    say "personal_docs/ added to $excludes"
   fi
-fi
+}
 
-echo ""
-echo "Next steps:"
-echo "  1. Restart Claude Code for changes to take effect"
-echo "  2. Check MCP servers with: claude mcp list"
-echo "  3. Try: /tdd, /verify, /build-fix, or the built-in /code-review"
-echo ""
-echo -e "Run ${YELLOW}./install.sh --uninstall${NC} to remove."
+install_settings() {
+  echo "Settings"
+  local flags=()
+  $WITH_HOOKS && flags+=(--hooks)
+  $WITH_SOUNDS && flags+=(--sounds)
+  $DRY_RUN && flags+=(--dry-run)
+  python3 -I "$REPO/scripts/merge_settings.py" "$REPO/settings.json" "$CLAUDE_DIR/settings.json" "${flags[@]}"
+  if $WITH_HOOKS; then
+    for f in "$REPO"/hooks/*.mjs; do link "$f" "$CLAUDE_DIR/hooks/$(basename "$f")"; done
+  fi
+  if $WITH_SOUNDS; then link "$REPO/sounds" "$CLAUDE_DIR/sounds"; fi
+  if $WITH_ADHD; then run touch "$CLAUDE_DIR/.i-have-adhd-always"; fi
+}
+
+install_plugins() {
+  echo "Plugins and MCP"
+  if ! command -v claude >/dev/null 2>&1; then
+    say "claude CLI not found; skipping. See docs/TOOLKIT.md for manual installs."
+    return 0
+  fi
+  if claude plugin list 2>/dev/null | grep -q 'i-have-adhd'; then
+    say "i-have-adhd already installed"
+  else
+    run claude plugin marketplace add ayghri/i-have-adhd
+    run claude plugin install i-have-adhd@i-have-adhd
+  fi
+  if claude mcp get context7 >/dev/null 2>&1; then
+    say "context7 already registered"
+  else
+    run claude mcp add --scope user context7 -- npx -y @upstash/context7-mcp@latest
+  fi
+}
+
+main() {
+  $DRY_RUN && echo "Dry run: nothing will change."
+  install_global_instructions
+  install_components
+  install_git_excludes
+  install_settings
+  $WITH_PLUGINS && install_plugins
+  echo
+  [ -d "$BACKUP_DIR" ] && echo "Backups: $BACKUP_DIR"
+  echo "Done. Restart your agent, then run /context to see the startup cost."
+}
+
+main

@@ -5,7 +5,7 @@ paths:
 ---
 # Python Hooks
 
-> This file extends [common/hooks.md](../common/hooks.md) with Python specific content.
+> Extends the global `AGENTS.md` with Python-specific guidance.
 
 ## PostToolUse Hooks
 

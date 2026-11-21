@@ -1,24 +1,24 @@
 #!/bin/bash
-# One-line installer for claude-code-config.
+# One-line installer for dotagents.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/claude-code-config/main/setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/dotagents/main/setup.sh | bash
 #
 # Pass flags through to install.sh:
-#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/claude-code-config/main/setup.sh | bash -s -- --minimal
-#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/claude-code-config/main/setup.sh | bash -s -- --full
-#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/claude-code-config/main/setup.sh | bash -s -- --dry-run
+#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/dotagents/main/setup.sh | bash -s -- --skills humanizer,project-notes,setup-audit
+#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/dotagents/main/setup.sh | bash -s -- --skills humanizer,project-notes,setup-audit
+#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/dotagents/main/setup.sh | bash -s -- --dry-run
 #
 # Environment overrides:
-#   CLAUDE_CODE_CONFIG_REPO  Git URL to clone (default: this repo on GitHub)
-#   CLAUDE_CODE_CONFIG_REF   Branch/tag/commit to check out (default: main)
-#   CLAUDE_CODE_CONFIG_SRC   Where to clone to (default: $HOME/.local/share/claude-code-config)
+#   DOTAGENTS_REPO  Git URL to clone (default: this repo on GitHub)
+#   DOTAGENTS_REF   Branch/tag/commit to check out (default: main)
+#   DOTAGENTS_SRC   Where to clone to (default: $HOME/.local/share/dotagents)
 
 set -euo pipefail
 
-REPO="${CLAUDE_CODE_CONFIG_REPO:-https://github.com/Cyvid7-Darus10/claude-code-config.git}"
-REF="${CLAUDE_CODE_CONFIG_REF:-main}"
-DEST="${CLAUDE_CODE_CONFIG_SRC:-$HOME/.local/share/claude-code-config}"
+REPO="${DOTAGENTS_REPO:-https://github.com/Cyvid7-Darus10/dotagents.git}"
+REF="${DOTAGENTS_REF:-main}"
+DEST="${DOTAGENTS_SRC:-$HOME/.local/share/dotagents}"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'

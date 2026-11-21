@@ -77,8 +77,8 @@ Agent:
 # Swift Code Review Report
 
 ## Files Reviewed
-- Isip/Services/CaptureService.swift (modified)
-- Isip/Views/Capture/CaptureBar.swift (modified)
+- MyApp/Services/CaptureService.swift (modified)
+- MyApp/Views/Capture/CaptureBar.swift (modified)
 
 ## Build Results
 ✓ Build: Successful
@@ -87,7 +87,7 @@ Agent:
 ## Issues Found
 
 [CRITICAL] Mutable shared state without actor protection
-File: Isip/Services/CaptureService.swift:15
+File: MyApp/Services/CaptureService.swift:15
 Issue: `var recordings: [Recording]` in a class accessed from multiple async contexts.
 ```swift
 class CaptureService {
@@ -102,7 +102,7 @@ actor CaptureService {
 ```
 
 [HIGH] Side effect in SwiftUI body
-File: Isip/Views/Capture/CaptureBar.swift:32
+File: MyApp/Views/Capture/CaptureBar.swift:32
 Issue: Network call triggered during view body evaluation
 ```swift
 var body: some View {

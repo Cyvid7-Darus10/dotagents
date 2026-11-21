@@ -1,317 +1,150 @@
 <div align="center">
 
-# Claude Code Config
+# dotagents
 
-**Production-ready Claude Code configuration for rapid app development.**
+**Dotfiles for coding agents.** One lean setup for Claude Code, Codex, Gemini CLI and Cursor. It includes a guided auditor that measures your current setup, explains it, and trims it with you.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Agents](https://img.shields.io/badge/Agents-13-purple)](agents/)
-[![Commands](https://img.shields.io/badge/Commands-16-green)](commands/)
-[![Skills](https://img.shields.io/badge/Skills-16-orange)](skills/)
-[![Rules](https://img.shields.io/badge/Rules-curated-red)](rules/)
-[![Token-Saving Hooks](https://img.shields.io/badge/Hooks-Token--Saving-blueviolet)](hooks/)
+[![Agents](https://img.shields.io/badge/works%20with-Claude%20Code%20·%20Codex%20·%20Gemini%20CLI%20·%20Cursor-111)](global/AGENTS.md)
+[![Skills](https://img.shields.io/badge/skills-24-orange)](skills/)
+[![Measured](https://img.shields.io/badge/claims-measured-2ea44f)](docs/EXPERIMENTS.md)
 
-13 agents · 16 commands · 16 skills · curated rules · token-saving hooks.
-
-Deliberately lean: skill descriptions, agent definitions, and MCP schemas all consume context in **every** session. This config stays well under the ~10% startup-overhead budget so auto-invocation keeps working and subagents don't blow their context at spawn.
-
-Built on [Everything Claude Code (ECC)](https://github.com/affaan-m/ECC) + [obra/superpowers](https://github.com/obra/superpowers).
+[Quick start](#quick-start) · [What the audit does](#what-the-audit-does) · [Results](#results) · [What's inside](#whats-inside) · [personal_docs](#personal_docs) · [Toolkit](docs/TOOLKIT.md) · [Experiments](docs/EXPERIMENTS.md)
 
 </div>
 
 ---
 
-## Install
+## Why
 
-**One-liner** (clones to `~/.local/share/claude-code-config`, installs the default zero-dep set):
+Agent setups grow by accretion. You try a connector, a plugin, a skill pack, and they all stay. Each one is loaded into **every** session before you type: tool names, descriptions, injected rules. The agent starts with less room, compacts sooner and follows instructions less reliably. And each agent you use has its own config, so the instructions drift apart.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/claude-code-config/main/setup.sh | bash
-```
+dotagents fixes both problems:
 
-Or pass flags through:
+- **One source of truth.** A single [`global/AGENTS.md`](global/AGENTS.md) is linked into every agent, and the skills say when they apply. Edits in the repo go live through symlinks.
+- **Shared project memory.** A private, git-ignored [`personal_docs/`](#personal_docs) folder in each project that every agent reads first and writes back to.
+- **A guided audit.** [`setup-audit`](skills/setup-audit/SKILL.md) measures your setup, explains it in plain language, asks how you work, and proposes a reversible plan. It changes nothing until you approve.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/claude-code-config/main/setup.sh | bash -s -- --minimal
-curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/claude-code-config/main/setup.sh | bash -s -- --full
-curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/claude-code-config/main/setup.sh | bash -s -- --dry-run
-```
-
-**Manual clone** (if you'd rather inspect before running):
+## Quick start
 
 ```bash
-git clone https://github.com/Cyvid7-Darus10/claude-code-config.git
-cd claude-code-config
-./install.sh
+git clone https://github.com/Cyvid7-Darus10/dotagents.git
+cd dotagents
+claude        # or: codex, gemini
 ```
 
-Restart Claude Code. Try `/tdd`, `/verify`, `/build-fix`, or the built-in `/code-review`.
-
-**Minimal install** (agents, commands, skills, rules only — no hooks):
+Opening an agent in the repo starts **audit mode** ([`AGENTS.md`](AGENTS.md)). You can also skip the audit:
 
 ```bash
-./install.sh --minimal
+./install.sh --dry-run                 # preview every change
+./install.sh                           # install everything (backs up whatever it replaces)
+./install.sh --skills humanizer,verify-app,project-notes,setup-audit   # pick skills
 ```
 
-**Full install** (adds Node.js-based quality-gate hooks — requires Node 18+):
+| Flag | Effect |
+|---|---|
+| `--skills a,b,c` | Link only these skills (default: all) |
+| `--adhd` | Turn on i-have-adhd for every session (costs ~2.5k tokens/session; off by default) |
+| `--no-plugins` | Skip installing the i-have-adhd plugin (on demand via `/i-have-adhd`) and the context7 MCP server |
+| `--hooks` | Token-saving Read/PostToolUse hooks (needs Node 18+) |
+| `--sounds` | macOS notification sounds |
 
-```bash
-./install.sh --full
-```
+## What the audit does
 
-**Selective install / uninstall**:
-
-```bash
-./install.sh agents skills              # Install only these two components
-./install.sh --dry-run                  # Preview without touching disk
-./install.sh --uninstall                # Remove everything the installer placed
-./install.sh --uninstall skills         # Remove just one component
-```
-
-Available components: `agents`, `commands`, `skills`, `rules`, `mcp`, `sounds`, `security` (docs), `hooks` (token-saving Node hooks, opt-in).
-
-### Updating
-
-Re-run the one-liner at any time — `setup.sh` fetches the latest commit, hard-resets to `origin/main`, and re-runs `install.sh`:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/claude-code-config/main/setup.sh | bash
-```
-
-What happens to each file in `~/.claude/`:
-
-| Path | Behaviour on update |
-|------|---------------------|
-| `settings.json` | **Never overwritten** — your customisations are safe. Diff against the repo's `settings.json` to see new defaults worth merging. |
-| MCP servers | Registered at user scope via `claude mcp add` (stored in `~/.claude.json`); already-registered servers are left alone. |
-| `agents/`, `commands/`, `skills/`, `rules/` | Replaced with latest. Previous copy backed up to `~/.claude/backups/pre-install-<timestamp>/` first. |
-| `~/.local/share/claude-code-config` (the clone) | Fast-forwarded to `origin/main`. |
-
-**See what changed** before updating:
-
-```bash
-cd ~/.local/share/claude-code-config && git fetch && git log --oneline HEAD..origin/main
-```
-
-**Pin to a specific version** (useful for reproducible team setups):
-
-```bash
-CLAUDE_CODE_CONFIG_REF=v1.0.0 curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/claude-code-config/main/setup.sh | bash
-```
-
-**Roll back** to a previous install:
-
-```bash
-ls ~/.claude/backups/                    # find the timestamp you want
-cp -r ~/.claude/backups/pre-install-<timestamp>/* ~/.claude/
-```
-
-**Merge new defaults into your existing `settings.json`** — since the installer won't overwrite it:
-
-```bash
-diff ~/.claude/settings.json ~/.local/share/claude-code-config/settings.json
-```
-
-Copy over the hook entries or permission rules you want; leave your custom fields alone.
-
-### Requirements
-
-| | Default install | `--full` install |
+| Phase | What you see | Changes anything? |
 |---|---|---|
-| bash 3.2+ | Required | Required |
-| git | Only for `git clone` / updates | Only for `git clone` / updates |
-| Node.js 18+ | Not needed | Required (for `hooks/` quality gates) |
-| jq / Python | Never | Never |
+| 1. Inventory | Scans connectors, MCP servers, plugins, skills, agents, rules and memory, plus your transcripts for what you actually use. Optionally measures startup tokens (you approve the few cents of API cost) | No |
+| 2. Report | **"Your setup today":** startup cost, an inventory table, what costs the most (with evidence), what's working, caveats | No |
+| 3. Interview | Up to 4 questions: what you build, which agents you use, output style, borderline items | No |
+| 4. Plan | A table of change · why · expected effect · undo, plus the `install.sh --dry-run` output. One approval, and you can strike rows | No |
+| 5. Apply | Archives (never deletes), disables, scopes to projects, installs your choices | Yes, with backups |
+| 6. Verify | Re-measures and shows before/after numbers, how to work with the new setup, how to undo | No |
 
-The default install is **zero runtime dependencies**. The Node-based token-saving hooks in `hooks/` (duplicate-read blocking, output compression) are opt-in.
+## Results
 
----
+Measured on the setup this repo was built from (Claude Code 2.1.330, Opus 5.5). Method, raw runs and caveats are in [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
 
-## What You Get
+| What was changed | Startup tokens |
+|---|---|
+| Claude Code's own floor (system prompt + built-in tools) | ~35,400 |
+| claude.ai connectors (15, several never signed in) | **+3.4k to +12.8k** headless; more in interactive sessions |
+| i-have-adhd always-on injection | +2.5k |
+| One framework plugin with 49 skills | +0.9k |
+| Old config files vs. new (45→24 skills, 17→10 agents, 8.7 KB→4.5 KB always-on rules) | +0.25k |
 
-**Default install** (zero runtime dependencies):
+Interactive sessions on the old setup started at a **median of 77.4k tokens** (11 sessions, from local transcripts).
 
-| Component | Count | Examples |
-|-----------|------:|----------|
-| Agents | 13 | `planner`, `architect`, `code-reviewer`, `security-reviewer`, `tdd-guide`, `build-error-resolver`, `typescript-reviewer`, `python-reviewer`, `database-reviewer`, `docs-lookup`, `e2e-runner`, `refactor-cleaner`, `swift-reviewer` |
-| Slash commands | 16 | `/tdd`, `/verify`, `/build-fix`, `/e2e`, `/test-coverage`, `/refactor-clean`, `/python-review`, `/swift-review`, `/swift-test`, `/docs`, `/ponytail` + 5 ponytail subcommands |
-| Skills | 16 | api-design, backend/frontend-patterns, postgres-patterns, database-migrations, e2e-testing, market-research, ponytail, python + swift/SwiftUI/Foundation Models packs |
-| Coding rules | curated | Common (coding style, git workflow, testing, security, multi-repo-consistency) + TypeScript, Python, Swift |
-| MCP servers | 2 | `context7` (docs, used by `docs-lookup`), `playwright` (used by `e2e-runner`) — GitHub via `gh` CLI, not MCP |
+What we learned: **connectors and always-on injections are where the tokens go.** Trimming skills and rules is worth doing for clarity and correctness (fewer wrong auto-picks, no "MUST BE USED" subagent spam, one source of truth), but it is not a token lever. We say so rather than oversell it.
 
-**Opt-in with `--full`** (requires Node.js 18+):
-
-| Component | Count | Examples |
-|-----------|------:|----------|
-| Token-saving hooks | 2 | `pre-read.mjs` blocks duplicate file reads · `compress.mjs` compresses noisy tool output and detects command loops |
-
----
-
-## Workflows
-
-- **Idea → plan → TDD → ship** — plan with the built-in plan mode (Shift+Tab) or the `planner` agent, then `/tdd` runs RED-GREEN-REFACTOR.
-- **Built-ins, not shadows** — `/plan`, `/code-review`, and `/security-review` are Claude Code built-ins, so this config deliberately ships no files with those names (a user command of the same name hides the built-in).
-- **Intelligent routing** — the `task-router` hook analyses every prompt and surfaces the right agent or skill as a hint. Routes include: `plan-first`, `architecture`, `debug`, `tdd`, `security`, `review`, `refactor`, `build-fix`, `docs`, `performance`, `backend` (endpoint/migration/queue work → backend-judgement checklist), `reasoning` (ambiguous/cross-cutting prompts → systematic-reasoning).
-- **Session continuity** — `session-restore` on start, `pre-compact-checkpoint` before compaction, `session-persist` on stop. Pick up where you left off across restarts.
-- **Deliberate thinking** — the `systematic-reasoning` skill forces a four-pass model-building process before non-trivial changes. The `backend-judgement` skill applies a 9-check production-safety list to every endpoint, migration, queue consumer, and job.
-- **Multi-repo consistency** — `rules/common/multi-repo-consistency.md` codifies cross-stack invariants (naming, error handling, logging, boundaries, testing) so Claude behaves the same across your Go / TS / Python / Rust / Java / Kotlin / Swift / C++ / PHP / C# / Perl repos.
-
----
-
-## MCP Servers
-
-`./install.sh` registers these at user scope with `claude mcp add` (Claude Code reads MCP servers from `~/.claude.json` or a project `.mcp.json` — a file at `~/.claude/mcp.json` is never loaded).
-
-| Server | Purpose | Manual setup |
-|--------|---------|--------------|
-| `context7` | Live library/API docs | `claude mcp add --scope user context7 -- npx -y @upstash/context7-mcp@latest` |
-| `playwright` | Browser automation | `claude mcp add --scope user playwright -- npx -y @playwright/mcp --browser chrome` |
-
-GitHub: use the `gh` CLI rather than an MCP server — no token sits in a config file.
-
----
-
-## Security
-
-Deny-list defaults protect credentials and destructive commands — see `settings.json`. Permissions block:
-
-- Reads of `~/.ssh`, `~/.aws`, `.env`, `credentials*`, `secrets*`, and edits to `~/.ssh`, `~/.aws`, `~/.env` (file-write denies must use `Edit(...)` — Claude Code ignores `Write(...)` path rules)
-- `rm -rf /`, `rm -rf ~`, `rm -rf /*`
-- `curl|bash`, `wget|bash`, `curl -d` exfiltration patterns
-- `git remote add`, `npm publish`, `nc`/`netcat`
-
-See [security/SECURITY.md](security/SECURITY.md) for the full threat model.
-
----
-
-## Customisation
-
-<details>
-<summary>Add a command</summary>
-
-Create `~/.claude/commands/my-command.md`:
-
-```markdown
----
-description: What my command does
----
-Instructions for Claude when this command is invoked.
-```
-
-</details>
-
-<details>
-<summary>Add a skill</summary>
-
-Create `~/.claude/skills/my-skill/SKILL.md`:
-
-```markdown
----
-name: my-skill
-description: When to activate this skill
----
-Domain knowledge and instructions.
-```
-
-</details>
-
-<details>
-<summary>Add an agent</summary>
-
-Create `~/.claude/agents/my-agent.md`:
-
-```markdown
----
-name: my-agent
-description: What this agent specializes in
-tools: ["Read", "Grep", "Glob", "Bash"]
-model: sonnet
----
-System prompt for the agent.
-```
-
-</details>
-
-<details>
-<summary>Add / remove lifecycle hooks</summary>
-
-Edit `~/.claude/settings.json` under `hooks.{SessionStart,UserPromptSubmit,PreToolUse,PostToolUse,PreCompact,Stop,Notification}`.
-
-The default config avoids `PreToolUse` and `PostToolUse` because they fire on **every** tool call and can add several seconds of latency per turn. If you add them, keep them small, set `timeout` low, and prefer `async: true`.
-
-</details>
-
----
-
-## Recommended companion plugins
-
-After installing this config, layer these official marketplaces on top — they're curated, actively maintained, and complement our agents without duplicating them:
-
-```bash
-# In Claude Code:
-/plugin install superpowers@claude-plugins-official
-/plugin marketplace add trailofbits/skills
-/plugin marketplace add wshobson/agents
-```
-
-| Plugin | Why add it | Source |
-|--------|------------|--------|
-| **superpowers** | TDD methodology, brainstorming, systematic-debugging — officially accepted into Anthropic marketplace Jan 2026 | [obra/superpowers](https://github.com/obra/superpowers) |
-| **Trail of Bits skills** | Pro-grade security auditing: static analysis, variant analysis, differential review, supply-chain risk, constant-time analysis | [trailofbits/skills](https://github.com/trailofbits/skills) |
-| **wshobson/agents** | 184 agents across 25 categories — cherry-pick `conductor` (track management), `comprehensive-review` (multi-perspective analysis), `plugin-eval` (anti-pattern detection) | [wshobson/agents](https://github.com/wshobson/agents) |
-
----
-
-## Troubleshooting
-
-- **Hooks not running** — restart Claude Code (it reloads `settings.json` only on start).
-- **`settings.json` didn't change after re-install** — expected: the installer never overwrites an existing `settings.json`. Delete or rename your copy, then re-run, or hand-merge from this repo.
-- **Node hooks failing** — you installed `--full` without Node 18+. Either install Node or re-run with `./install.sh` (default omits Node hooks).
-- **Skill descriptions being dropped** — run `/doctor` in Claude Code; if skills are shortened or dropped, you've added too many. Run `/context` to see startup overhead.
-
----
-
-## Project Layout
+## What's inside
 
 ```
-claude-code-config/
-├── .claude-plugin/
-│   ├── plugin.json        # Plugin manifest
-│   └── marketplace.json   # Plugin marketplace entry (Anthropic convention)
-├── agents/                # 13 specialized subagents
-├── commands/              # 10 slash commands
-├── skills/                # 17 workflow skills
-├── rules/                 # Curated coding rules (common + python/swift/typescript)
-├── hooks/                 # Opt-in Node token-saving hooks
-├── scripts/hooks/         # Scripts invoked by the opt-in hooks
-├── security/              # Security framework docs
-├── mcp-configs/           # Reference MCP server configs
-├── sounds/                # Optional macOS notification sounds
-├── images/                # README demo GIFs
-├── docs/                  # Developer docs (PLUGIN_SCHEMA_NOTES.md, tapes/)
-├── install.sh             # Zero-dep installer (--minimal / --full / --uninstall / --dry-run)
-├── settings.json          # Starter settings (permissions + token-saving hooks)
-├── mcp.json               # Reference MCP server definitions (installer registers them via the CLI)
-└── AGENTS.md              # Full agent reference
+dotagents/
+├── AGENTS.md            ← instructions for agents opened in this repo (audit mode)
+├── global/
+│   ├── AGENTS.md        ← your global instructions, for every agent
+│   └── CLAUDE.md        ← imports AGENTS.md + Claude-only extras
+├── skills/              ← 24 skills, each says when it applies
+│   ├── setup-audit/     ← the guided auditor (+ inventory.py, measure.py)
+│   └── project-notes/   ← personal_docs convention + templates
+├── agents/  commands/   ← reviewers, tdd-guide, build fixer; /tdd /verify /ponytail…
+├── rules/<lang>/        ← path-scoped: load only when matching files are touched
+├── docs/                ← TOOLKIT, CONTEXT, EXPERIMENTS
+├── hooks/               ← optional token-saving hooks (--hooks)
+└── install.sh           ← symlink installer with dry-run and backups
 ```
 
----
+| Where | What gets linked |
+|---|---|
+| Claude Code | `~/.claude/{CLAUDE.md, AGENTS.md, skills, agents, commands, rules}` |
+| Codex | `~/.codex/AGENTS.md` (+ `~/.agents/skills/` if present) |
+| Gemini CLI | `~/.gemini/GEMINI.md` |
+| Cursor | Paste `global/AGENTS.md` into *Rules for AI* (Cursor has no global file) |
+
+**Skills:** `setup-audit` and `project-notes`, plus `humanizer` (copy that doesn't read as machine-written), `verify-app` (per-feature coverage matrix and fix loop), `audit-app-design`, `shipping-ios-apps`, `appstore-release`, `marketing-screenshots`, `polar-checkout`, `backend-judgement`, `systematic-reasoning`, `photo-cull`, `ponytail`. The rest are reference patterns for Swift/SwiftUI, Python, Postgres, migrations and API design.
+
+## personal_docs
+
+```
+your-project/
+└── personal_docs/        git-ignored via your global excludes file, never committed
+    ├── README.md         index + current focus; every agent reads this first
+    ├── architecture.md   components, data flow, key files, services
+    ├── runbook.md        run / test / deploy; env var names, never values
+    ├── gotchas.md        symptom → cause → fix
+    ├── decisions.md      what was chosen, why, what was rejected
+    ├── learnings.md      lessons beyond one bug
+    ├── notes/            YYYY-MM-DD-topic.md handoffs (goal / done / state / next)
+    └── docs/             longer reference
+```
+
+- **Why not `CLAUDE.md`?** It's committed and team-facing, and only one agent reads it. `personal_docs/` is private, structured, and shared by every agent you use.
+- **Why not agent memory?** Agent memory is per tool and per user. It's good for how you like to work. Project facts belong with the project.
+
+## Toolkit: when to reach for what
+
+| Situation | Use |
+|---|---|
+| Library or CLI syntax, version-specific APIs | [context7](https://github.com/upstash/context7) |
+| Large or unfamiliar repo, "how does X reach Y?" | [graphify](https://github.com/safishamsi/graphify), per project |
+| Symbol-level navigation in a big typed codebase | LSP plugins, or [serena](https://github.com/oraios/serena) |
+| Very long session where replies dominate | [caveman](https://github.com/JuliusBrussee/caveman) `/ultracave`, on demand |
+| You want an enforced plan → TDD process | [superpowers](https://github.com/obra/superpowers) |
+
+Full guide, including when **not** to install each one: [docs/TOOLKIT.md](docs/TOOLKIT.md).
+
+## Undo
+
+- Every replaced file goes to `~/.claude/backups/pre-install-<timestamp>/`, and the path is printed at the end.
+- Links are symlinks: `rm ~/.claude/skills/<name>` removes one and leaves the repo intact.
+- The audit archives to `~/.claude/archive/` and never deletes.
+
+## Contributing
+
+Keep it lean. Every addition costs every user context in every session. A new tool needs a "use when / skip when" row in [TOOLKIT.md](docs/TOOLKIT.md). A new claim needs a measurement in [EXPERIMENTS.md](docs/EXPERIMENTS.md). Run `./install.sh --dry-run` and `python3 -I skills/setup-audit/scripts/inventory.py` before opening a PR.
 
 ## Credits
 
-- [Everything Claude Code (ECC)](https://github.com/affaan-m/ECC) — Agents, commands, rules, hooks, scripts, security guide.
-- [superpowers](https://github.com/obra/superpowers) — Brainstorming, planning, TDD skills.
-- [claude-code-hooks-multi-agent-observability](https://github.com/disler/claude-code-hooks-multi-agent-observability) — Monitoring patterns.
-- [ruflo](https://github.com/ruvnet/ruflo) — Task-router and session-persistence patterns.
+Started as a fork of [Everything Claude Code](https://github.com/affaan-m/ECC), then cut down to what measurably helps. Process ideas from [obra/superpowers](https://github.com/obra/superpowers). Output-style ideas from [i-have-adhd](https://github.com/ayghri/i-have-adhd) and [caveman](https://github.com/JuliusBrussee/caveman).
 
-## License
-
-MIT — see [LICENSE](LICENSE).
-
----
-
-<div align="center">
-
-Made by [Cyrus David Pastelero](https://github.com/Cyvid7-Darus10) — if this helped you, consider starring.
-
-</div>
+MIT © Cyrus David Pastelero

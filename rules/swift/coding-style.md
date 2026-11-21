@@ -5,7 +5,7 @@ paths:
 ---
 # Swift Coding Style
 
-> This file extends [common/coding-style.md](../common/coding-style.md) with Swift specific content.
+> Extends the global `AGENTS.md` with Swift-specific guidance.
 
 ## Formatting
 

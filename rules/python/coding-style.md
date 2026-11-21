@@ -5,7 +5,7 @@ paths:
 ---
 # Python Coding Style
 
-> This file extends [common/coding-style.md](../common/coding-style.md) with Python specific content.
+> Extends the global `AGENTS.md` with Python-specific guidance.
 
 ## Standards
 

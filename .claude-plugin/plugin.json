@@ -1,13 +1,13 @@
 {
-  "name": "claude-code-config",
-  "version": "2.1.0",
-  "description": "Lean, curated Claude Code configuration — 13 agents, 16 commands, 16 skills, curated rules. Trimmed from Everything Claude Code (ECC) to stay within context-budget best practices.",
+  "name": "dotagents",
+  "version": "3.0.0",
+  "description": "Lean, agent-agnostic setup: global AGENTS.md, personal_docs convention, setup-audit skill, curated skills and path-scoped rules.",
   "author": {
     "name": "Cyrus David Pastelero",
     "url": "https://github.com/Cyvid7-Darus10"
   },
-  "homepage": "https://github.com/Cyvid7-Darus10/claude-code-config",
-  "repository": "https://github.com/Cyvid7-Darus10/claude-code-config",
+  "homepage": "https://github.com/Cyvid7-Darus10/dotagents",
+  "repository": "https://github.com/Cyvid7-Darus10/dotagents",
   "license": "MIT",
   "keywords": [
     "claude-code",
@@ -20,8 +20,6 @@
     "security",
     "workflow",
     "automation",
-    "best-practices",
-    "superpowers",
-    "brainstorming"
+    "best-practices"
   ]
 }
