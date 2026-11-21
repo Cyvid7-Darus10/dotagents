@@ -1,6 +1,7 @@
 ---
 name: photo-cull
 description: Pick the good photos out of a folder of camera RAW files (Sony .ARW and other RAW formats). Generates previews, scores every frame for sharpness and exposure, groups burst near-duplicates, then visually reviews the top candidates and assembles a selects/ folder. Use when asked to cull, sort, pick keepers, or find the best shots from a RAW photo shoot.
+disable-model-invocation: true
 ---
 
 # photo-cull

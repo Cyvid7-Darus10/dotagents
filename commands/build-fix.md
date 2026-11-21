@@ -1,5 +1,6 @@
 ---
 description: Incrementally fix build and type errors with minimal, safe changes.
+disable-model-invocation: true
 ---
 
 # Build and Fix

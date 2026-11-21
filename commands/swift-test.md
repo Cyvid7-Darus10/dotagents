@@ -1,5 +1,6 @@
 ---
 description: Enforce TDD workflow for Swift. Write Swift Testing tests first, then implement. Verify 80%+ coverage.
+disable-model-invocation: true
 ---
 
 # Swift TDD Command

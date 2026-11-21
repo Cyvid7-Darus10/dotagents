@@ -1,5 +1,6 @@
 ---
 description: Run comprehensive verification on current codebase state.
+disable-model-invocation: true
 ---
 
 # Verification Command

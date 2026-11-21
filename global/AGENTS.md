@@ -51,7 +51,7 @@ Loaded by every coding agent I use (Claude Code, Codex, Gemini CLI, Cursor). Kee
 
 Each project has a private, git-ignored `personal_docs/`: the shared memory for every agent working there. Details: the `project-notes` skill.
 
-- **Start:** read the nearest `personal_docs/README.md` (cwd up to the git root) before the first change. Open other files only when its "Read when" table says so. Resuming? Open `work/<task>.md` and start from its **Next** line.
+- **Start:** if the notes brief is not already in context, read the nearest `personal_docs/README.md` (cwd up to the git root) before the first change. Open other files only when its "Read when" table says so. Resuming? Open `work/<task>.md` and start from its **Next** line.
 - **Missing:** for non-trivial work, create it (`notes.py init` in the project-notes skill): README + `work/` only. Topic files appear on their first entry.
 - **Write back** what code and git can't tell the next agent: traps → `gotchas.md`, choices + why → `decisions.md`, commands and env var names → `runbook.md`, structure → `architecture.md`. Each entry gets a source (path:line or commit) and `Verified: YYYY-MM-DD`. Fix stale entries instead of adding contradictions.
 - **Unfinished work:** keep `work/<task>.md` (plan checklist, state, next) current. Archive it when done.
@@ -68,7 +68,7 @@ Each project has a private, git-ignored `personal_docs/`: the shared memory for 
 
 | Situation | Reach for |
 |---|---|
-| Library/API/CLI syntax or versions | context7 docs lookup, before answering from memory |
+| Library/API/CLI syntax or versions you are unsure of | context7 docs lookup |
 | Unfamiliar or large repo, "how does X connect to Y" | graphify graph (`graphify query`), if the repo has one |
 | Symbol-level navigation in a big typed codebase | the LSP plugin / serena, not grep over everything |
 | Copy a person will read (UI, README, store listing) | humanizer skill |

@@ -1,5 +1,6 @@
 ---
 description: Comprehensive Swift code review for idiomatic patterns, concurrency safety, SwiftUI best practices, and security. Invokes the swift-reviewer agent.
+disable-model-invocation: true
 ---
 
 # Swift Code Review

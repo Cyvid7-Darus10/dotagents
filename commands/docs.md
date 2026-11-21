@@ -1,5 +1,6 @@
 ---
 description: Look up current documentation for a library or topic via Context7.
+disable-model-invocation: true
 ---
 
 # /docs

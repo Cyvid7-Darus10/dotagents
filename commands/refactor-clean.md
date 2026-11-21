@@ -1,5 +1,6 @@
 ---
 description: Safely identify and remove dead code with test verification at every step.
+disable-model-invocation: true
 ---
 
 # Refactor Clean

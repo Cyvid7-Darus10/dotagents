@@ -1,6 +1,6 @@
 ---
 name: verify-app
-description: Full verification-and-fix loop for an app — build an honest per-feature coverage matrix, verify layer by layer (unit seams → integration/emulator → UI/E2E automation → visual passes), fix what breaks with regression tests, and install machine enforcement (pre-commit + Stop hooks) so the matrix stays true. Use when asked to "verify the app", "test everything properly", "set up a verification loop", "check what's actually tested", or after a port/migration needs feature-by-feature validation.
+description: Verify an app feature by feature: honest coverage matrix, layer-by-layer tests, fix what breaks, enforce with hooks. Use when asked to "verify the app", "test everything properly" or check what is actually tested.
 ---
 
 # Verify App — honest verification loop with enforcement

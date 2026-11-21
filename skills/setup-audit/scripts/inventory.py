@@ -110,9 +110,14 @@ def scan_one_transcript(path: Path, usage: Usage, is_session: bool) -> None:
             if '"tool_use"' not in line and "command-name" not in line and '"usage"' not in line:
                 continue
             try:
-                message = json.loads(line).get("message")
+                record = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            # Only interactive CLI sessions count toward the startup baseline; SDK and
+            # headless runs (sdk-py, sdk-ts, -p) start with different prompts.
+            if record.get("entrypoint") not in (None, "cli"):
+                first_turn_seen = True
+            message = record.get("message")
             if not isinstance(message, dict):
                 continue
             if not first_turn_seen and isinstance(message.get("usage"), dict):
@@ -196,12 +201,15 @@ def plugin_section(settings: dict, usage: Usage) -> tuple[dict, list[dict]]:
         hooks = (install_path / "hooks" / "hooks.json").exists() if install_path else False
         servers = list(load_json(install_path / ".mcp.json").get("mcpServers", {})) if install_path else []
         mcp_uses = sum(n for prefix, n in usage.mcp.items() if prefix.startswith(f"mcp__plugin_{short}_"))
+        # Plugin commands and agents show up as "<plugin>:<name>"; skill rows already count skills.
+        skill_names = {f"{short}:{r['name']}" for r in plugin_skills}
+        other_uses = sum(n for k, n in (usage.skills + usage.agents).items() if k.startswith(f"{short}:") and k not in skill_names)
         plugins[plugin_id] = {
             "enabled": is_enabled,
             "skills": len(plugin_skills),
             "mcp_servers": servers,
             "has_hooks": hooks,
-            "uses": sum(r["uses"] for r in plugin_skills) + mcp_uses,
+            "uses": sum(r["uses"] for r in plugin_skills) + mcp_uses + other_uses,
         }
         skills.extend(plugin_skills)
     synced = list((CLAUDE_DIR / "plugins" / "synced").glob("*/manifest.json"))
@@ -220,7 +228,15 @@ def agents_and_commands(usage: Usage) -> dict:
             "pushy": bool(PUSHY_WORDS.search(description)),
             "uses": usage.agents.get(path.stem, 0),
         })
-    commands = [{"name": p.stem, "uses": usage.skills.get(p.stem, 0)} for p in sorted((CLAUDE_DIR / "commands").glob("*.md"))]
+    commands = []
+    for path in sorted((CLAUDE_DIR / "commands").glob("*.md")):
+        meta = frontmatter(path)
+        commands.append({
+            "name": path.stem,
+            "description_chars": len(meta.get("description", "")),
+            "model_invocable": meta.get("disable-model-invocation", "").lower() != "true",
+            "uses": usage.skills.get(path.stem, 0),
+        })
     return {"agents": agents, "commands": commands, "builtin_agent_uses": dict(usage.agents.most_common())}
 
 
@@ -337,11 +353,13 @@ def setup_findings(report: dict, history_days: float) -> list[dict]:
     for plugin_id, info in report["plugins"].items():
         if info.get("enabled") and info.get("uses") == 0 and (info.get("skills") or info.get("mcp_servers")):
             out.append(finding("unused plugin", plugin_id, f"{info['skills']} skills, {len(info['mcp_servers'])} servers, 0 uses", "disable; re-enable per project when needed"))
+    # The listing holds each model-invocable skill and command: its name plus description.
     listed = [s for s in report["skills"] if s["model_invocable"] and s.get("enabled", True)]
-    listing_chars = sum(s["description_chars"] for s in listed)
+    listed += [c for c in report["commands"] if c["model_invocable"]]
+    listing_chars = sum(s["description_chars"] + len(s["name"]) for s in listed)
     if listing_chars > SKILL_LISTING_BUDGET_CHARS:
         unused = sum(1 for s in listed if s["uses"] == 0)
-        out.append(finding("skill listing overflow", f"{len(listed)} auto skills", f"{listing_chars} description chars vs ~{SKILL_LISTING_BUDGET_CHARS} budget; {unused} never used", "archive unused skills, disable idle plugins, make rare ones manual"))
+        out.append(finding("skill listing overflow", f"{len(listed)} auto skills and commands", f"{listing_chars} description chars vs ~{SKILL_LISTING_BUDGET_CHARS} budget; {unused} never used", "archive unused skills, disable idle plugins, make rare ones manual"))
     for path, size in report["instructions"]["memory_indexes"]:
         if size > MEMORY_INDEX_BUDGET_BYTES:
             out.append(finding("memory index too big", path, f"{size} bytes loaded every session", f"shorten each line to a hook, aim under {MEMORY_INDEX_BUDGET_BYTES} bytes"))

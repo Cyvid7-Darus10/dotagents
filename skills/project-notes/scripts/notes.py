@@ -26,6 +26,9 @@ README_MAX_LINES = 60
 TOPIC_MAX_LINES = 250
 STALE_DAYS = 90
 BRIEF_MAX_LINES = 80
+BRIEF_MAX_CHARS = 4000  # hard cap on what the SessionStart hook injects
+BRIEF_MAX_ITEMS = 5
+NEXT_MAX_CHARS = 160
 TOPIC_FILES = ("architecture.md", "runbook.md", "gotchas.md", "decisions.md", "learnings.md")
 SECRET = re.compile(
     r"(sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|xox[abp]-[A-Za-z0-9-]{10,}"
@@ -72,14 +75,20 @@ def cmd_brief(cwd: Path) -> int:
           f"open other files only when the task needs them. Write back what you learn.\n")
     if readme.exists():
         lines = readme.read_text(errors="replace").splitlines()
-        print("\n".join(lines[:BRIEF_MAX_LINES]))
-        if len(lines) > BRIEF_MAX_LINES:
-            print(f"\n[README truncated at {BRIEF_MAX_LINES} lines; trim it to {README_MAX_LINES}]")
+        body = "\n".join(lines[:BRIEF_MAX_LINES])
+        if len(body) > BRIEF_MAX_CHARS:
+            body = body[:BRIEF_MAX_CHARS].rsplit("\n", 1)[0]
+        print(body)
+        if len(lines) > BRIEF_MAX_LINES or len(body) < len("\n".join(lines)):
+            print(f"\n[README truncated; trim it to {README_MAX_LINES} lines]")
     items = work_items(notes)
     if items:
         print("\nActive work (personal_docs/work/):")
-        for name, nxt in items:
-            print(f"- {name}: next → {nxt}")
+        for name, nxt in items[:BRIEF_MAX_ITEMS]:
+            short = nxt if len(nxt) <= NEXT_MAX_CHARS else nxt[:NEXT_MAX_CHARS] + "…"
+            print(f"- {name}: next → {short}")
+        if len(items) > BRIEF_MAX_ITEMS:
+            print(f"- …and {len(items) - BRIEF_MAX_ITEMS} more in work/")
     return 0
 
 

@@ -1,5 +1,6 @@
 ---
 description: Comprehensive Python code review for PEP 8 compliance, type hints, security, and Pythonic idioms. Invokes the python-reviewer agent.
+disable-model-invocation: true
 ---
 
 # Python Code Review

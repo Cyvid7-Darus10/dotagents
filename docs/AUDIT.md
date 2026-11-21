@@ -36,6 +36,6 @@ Some things only you can do, such as disconnecting a claude.ai connector. The au
 On two setups, measured headless with `claude -p`:
 
 - First setup: connectors added +3.4k to +12.8k tokens, i-have-adhd always-on +2.5k, and trimming skills and rules only −0.25k.
-- Second setup: a full audit cut startup from 55,030 to 47,457 tokens (−14%).
+- Second setup: a full audit cut startup by 11% to 14% (−5.2k measured stably with connectors off).
 
-Connectors and always-on injections are where the tokens go. Trimming skills is for clarity and better auto-picks, not tokens. Method and raw numbers: [EXPERIMENTS.md](EXPERIMENTS.md).
+Connectors and always-on injections are where the startup tokens go. Trimming skills is about a listing that fits, so the agent sees every description and picks well. Method and raw numbers: [EXPERIMENTS.md](EXPERIMENTS.md).

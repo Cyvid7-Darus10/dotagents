@@ -1,6 +1,7 @@
 ---
 name: appstore-release
 description: Use when cutting an App Store release, uploading a build to App Store Connect / TestFlight, bumping an iOS app version, or when fastlane release/deliver/gym fails with signing errors like "Cloud signing permission error". Covers XcodeGen and plain Xcode projects.
+disable-model-invocation: true
 ---
 
 # App Store Release

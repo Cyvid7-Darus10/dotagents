@@ -28,30 +28,5 @@
       "Bash(nc *)",
       "Bash(netcat *)"
     ]
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/pre-read.mjs\""
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/compress.mjs\""
-          }
-        ]
-      }
-    ]
-  },
-  "effortLevel": "high"
+  }
 }

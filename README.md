@@ -9,10 +9,10 @@
 
 </div>
 
-Every connector, plugin and skill you've ever tried loads into every session before you type. The agent starts with less room and picks the wrong tools. dotagents gives you:
+Connectors, plugins and skills you tried once stay installed, and each one loads into every session before you type. The agent starts with less room and picks the wrong tools. dotagents gives you:
 
-- **A setup audit.** It finds unused, failing, duplicate and never-signed-in connectors, plugins and skills, then removes them once you approve. On one setup it cut startup by 14%. → [docs/AUDIT.md](docs/AUDIT.md)
-- **One instruction file for every agent.** [`global/AGENTS.md`](global/AGENTS.md) is linked into each one, so they never drift apart.
+- **A setup audit.** It finds unused, failing, duplicate and never-signed-in connectors, plugins and skills, then removes them once you approve. On one setup it cut startup tokens by 11–14%. → [docs/AUDIT.md](docs/AUDIT.md)
+- **One instruction file for every agent.** [`global/AGENTS.md`](global/AGENTS.md) is linked into Claude Code, Codex and Gemini CLI (pasted into Cursor), so they stay in sync.
 - **Shared project notes.** A private `personal_docs/` folder per project that every agent reads and updates. → [docs/PERSONAL_DOCS.md](docs/PERSONAL_DOCS.md)
 
 ## Quick start
@@ -23,7 +23,9 @@ cd dotagents
 claude        # or: codex, gemini. This starts the audit.
 ```
 
-Or install without the audit. It only adds files and removes nothing:
+The audit reads first and changes nothing until you approve its plan. Measuring startup tokens costs a few cents to about $1 of API usage, and it asks before doing that.
+
+Or install without the audit. It only adds files and removes nothing. It also adds a permission deny list to your settings; see [INSTALL.md](docs/INSTALL.md):
 
 ```bash
 ./install.sh --dry-run    # preview

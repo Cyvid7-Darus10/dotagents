@@ -1,6 +1,7 @@
 ---
 name: polar-checkout
 description: Set up Polar.sh subscription checkout on a website, end to end — embedded checkout, signature-verified webhooks, an entitlement record other clients read, a customer portal, and a preflight check that gates the deploy. Use when asked to "add Polar", "set up polar.sh", "sell subscriptions on the site", "add a paid plan / pricing page with real payments", "take payments on the web instead of in-app purchase", or when debugging an existing Polar integration (checkout modal not opening, webhooks not landing, entitlements not updating).
+disable-model-invocation: true
 ---
 
 # Polar checkout, end to end

@@ -7,8 +7,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 BACKUP_DIR="$CLAUDE_DIR/backups/pre-install-$(date +%Y%m%d-%H%M%S)"
 DRY_RUN=false
-WITH_PLUGINS=true
-WITH_HOOKS=false
+WITH_PLUGINS=false
 WITH_SOUNDS=false
 WITH_ADHD=false
 WITH_NOTES_HOOK=true
@@ -16,7 +15,7 @@ SKILLS=""   # comma-separated; empty = all
 
 usage() {
   cat <<EOF
-Usage: ./install.sh [--dry-run] [--skills a,b,c] [--no-plugins] [--adhd] [--no-notes-hook] [--hooks] [--sounds]
+Usage: ./install.sh [--dry-run] [--skills a,b,c] [--plugins] [--adhd] [--no-notes-hook] [--sounds]
 
 Installs (symlinks):
   global/AGENTS.md   -> ~/.claude/AGENTS.md, ~/.codex/AGENTS.md, ~/.gemini/GEMINI.md
@@ -28,9 +27,8 @@ Configures:
   personal_docs/ in the global git excludes file
   settings.json: cleanupPeriodDays=90 (if unset), permission deny list (merged)
   Claude Code SessionStart hook: prints the project's personal_docs brief (skip: --no-notes-hook)
-  plugins i-have-adhd + context7 MCP (skip: --no-plugins)
 Opt-in:
-  --hooks   token-saving Read/PostToolUse hooks (needs Node 18+)
+  --plugins i-have-adhd plugin (on demand) + context7 MCP server (pinned)
   --sounds  macOS notification sounds on Stop/Notification
 Choices:
   --skills a,b,c  link only these skills (default: all in skills/)
@@ -41,8 +39,9 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=true ;;
-    --no-plugins) WITH_PLUGINS=false ;;
-    --hooks) WITH_HOOKS=true ;;
+    --plugins) WITH_PLUGINS=true ;;
+    --no-plugins) WITH_PLUGINS=false ;;  # default now; kept so old commands still work
+    --hooks) echo "--hooks was removed: the hooks added output instead of trimming it (docs/EXPERIMENTS.md)." >&2 ;;
     --sounds) WITH_SOUNDS=true ;;
     --adhd) WITH_ADHD=true ;;
     --no-notes-hook) WITH_NOTES_HOOK=false ;;
@@ -154,15 +153,16 @@ install_git_excludes() {
 
 install_settings() {
   echo "Settings"
+  if [ -f "$CLAUDE_DIR/settings.json" ]; then
+    ensure_dir "$BACKUP_DIR/.claude"
+    run cp "$CLAUDE_DIR/settings.json" "$BACKUP_DIR/.claude/settings.json"
+    say "backed up ~/.claude/settings.json before merging"
+  fi
   local flags=()
-  $WITH_HOOKS && flags+=(--hooks)
   $WITH_SOUNDS && flags+=(--sounds)
   if $WITH_NOTES_HOOK && { [ -z "$SKILLS" ] || [[ ",$SKILLS," == *,project-notes,* ]]; }; then flags+=(--notes-hook); fi
   $DRY_RUN && flags+=(--dry-run)
   python3 -I "$REPO/scripts/merge_settings.py" "$REPO/settings.json" "$CLAUDE_DIR/settings.json" "${flags[@]}"
-  if $WITH_HOOKS; then
-    for f in "$REPO"/hooks/*.mjs; do link "$f" "$CLAUDE_DIR/hooks/$(basename "$f")"; done
-  fi
   if $WITH_SOUNDS; then link "$REPO/sounds" "$CLAUDE_DIR/sounds"; fi
   if $WITH_ADHD; then run touch "$CLAUDE_DIR/.i-have-adhd-always"; fi
 }
@@ -182,7 +182,7 @@ install_plugins() {
   if claude mcp get context7 >/dev/null 2>&1; then
     say "context7 already registered"
   else
-    run claude mcp add --scope user context7 -- npx -y @upstash/context7-mcp@latest
+    run claude mcp add --scope user context7 -- npx -y @upstash/context7-mcp@4.5.1
   fi
 }
 

@@ -1,6 +1,7 @@
 ---
 name: shipping-ios-apps
 description: Use when asked to take an iOS app from an idea all the way to a published App Store release ("build me an app that X and publish it", "take this idea live", "make and ship an app"), or to resume an app partway through that journey — branding, build, testing, design audit, store assets, or release.
+disable-model-invocation: true
 ---
 
 # Shipping iOS Apps

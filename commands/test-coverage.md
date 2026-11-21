@@ -1,5 +1,6 @@
 ---
 description: Analyze test coverage, identify gaps, and generate missing tests to reach 80%+ coverage.
+disable-model-invocation: true
 ---
 
 # Test Coverage

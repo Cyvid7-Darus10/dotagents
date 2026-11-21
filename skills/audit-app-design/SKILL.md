@@ -1,6 +1,6 @@
 ---
 name: audit-app-design
-description: Use when asked to audit, review, or polish an app's UI/UX or branding — spacing, padding, typography, font sizes, color, contrast, animation/motion, touch targets, dark mode, Dynamic Type — when screens "feel off", look inconsistent, generic or templated, when asked to judge an app's design "with taste", or when it needs a design pass before a release. Includes a Taste dimension (run with design-taste-frontend) that catches AI-default palettes, type and layout. The functionality-testing counterpart is verify-app; use this one when the question is how it looks and feels, not whether it works.
+description: Audit an app's UI/UX and branding (spacing, type, color, motion, touch targets, dark mode, taste). Use when screens feel off, generic or inconsistent, or before a release. For whether it works, use verify-app.
 ---
 
 # Audit App Design — evidence-driven UI/UX audit with a fix loop

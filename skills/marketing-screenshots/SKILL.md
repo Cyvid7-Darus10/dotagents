@@ -1,6 +1,7 @@
 ---
 name: marketing-screenshots
 description: Generate professional App Store marketing screenshots for an iOS app (and its watchOS companion) — capture real app screens on dedicated simulators (signed-in, seeded, polished status bar), then compose them with puppeteer into branded slides (gradient background, frosted-glass headline card with the app icon, tilted overlapping device mockups) at current App Store sizes, laid out for fastlane deliver. Use when asked for "marketing screenshots", "App Store screenshots", "watch screenshots", "store listing images", or to refresh a listing's screenshots before a release.
+disable-model-invocation: true
 ---
 
 # Marketing Screenshots — capture real screens, compose branded slides

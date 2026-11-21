@@ -1,6 +1,6 @@
 ---
 name: setup-audit
-description: Guided audit and setup of a coding-agent environment (Claude Code, Codex, Gemini CLI, Cursor). Explains the user's current setup and its measured startup cost, interviews them about how they work, proposes a tailored and reversible cleanup, installs this repo's flow (global AGENTS.md, personal_docs, chosen skills), then re-measures. Use when the user clones or opens this repo, says the setup feels slow or bloated, or asks to "clean up my MCPs/skills", "optimize my context", "set up", or "audit my setup".
+description: Hygiene check for a coding-agent setup: finds unused, failing, duplicate and never-signed-in connectors, plugins and skills, measures startup cost, and trims them with the user. Use when asked to audit, clean up or optimize a setup, or when this repo is opened.
 ---
 
 # setup-audit
