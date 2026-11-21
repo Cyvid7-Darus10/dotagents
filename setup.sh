@@ -2,12 +2,12 @@
 # One-line installer for dotagents.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/dotagents/main/setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dotagents/main/setup.sh | bash
 #
 # Pass flags through to install.sh:
-#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/dotagents/main/setup.sh | bash -s -- --skills humanizer,project-notes,setup-audit
-#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/dotagents/main/setup.sh | bash -s -- --skills humanizer,project-notes,setup-audit
-#   curl -fsSL https://raw.githubusercontent.com/Cyvid7-Darus10/dotagents/main/setup.sh | bash -s -- --dry-run
+#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dotagents/main/setup.sh | bash -s -- --skills humanizer,project-notes,setup-audit
+#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dotagents/main/setup.sh | bash -s -- --skills humanizer,project-notes,setup-audit
+#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dotagents/main/setup.sh | bash -s -- --dry-run
 #
 # Environment overrides:
 #   DOTAGENTS_REPO  Git URL to clone (default: this repo on GitHub)
@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-REPO="${DOTAGENTS_REPO:-https://github.com/Cyvid7-Darus10/dotagents.git}"
+REPO="${DOTAGENTS_REPO:-https://github.com/cyruspastelero/dotagents.git}"
 REF="${DOTAGENTS_REF:-main}"
 DEST="${DOTAGENTS_SRC:-$HOME/.local/share/dotagents}"
 

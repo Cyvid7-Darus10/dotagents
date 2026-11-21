@@ -14,7 +14,7 @@
  * 3. DUPLICATE READ TRACKING — Warns when Claude re-reads a file
  *    it already has in context, preventing full file duplication.
  *
- * MIT License — https://github.com/Cyvid7-Darus10/claude-savings
+ * MIT License — https://github.com/cyruspastelero/claude-savings
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'

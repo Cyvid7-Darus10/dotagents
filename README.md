@@ -28,7 +28,7 @@ dotagents fixes both problems:
 ## Quick start
 
 ```bash
-git clone https://github.com/Cyvid7-Darus10/dotagents.git
+git clone https://github.com/cyruspastelero/dotagents.git
 cd dotagents
 claude        # or: codex, gemini
 ```

@@ -4,10 +4,10 @@
   "description": "Lean, agent-agnostic setup: global AGENTS.md, personal_docs convention, setup-audit skill, curated skills and path-scoped rules.",
   "author": {
     "name": "Cyrus David Pastelero",
-    "url": "https://github.com/Cyvid7-Darus10"
+    "url": "https://github.com/cyruspastelero"
   },
-  "homepage": "https://github.com/Cyvid7-Darus10/dotagents",
-  "repository": "https://github.com/Cyvid7-Darus10/dotagents",
+  "homepage": "https://github.com/cyruspastelero/dotagents",
+  "repository": "https://github.com/cyruspastelero/dotagents",
   "license": "MIT",
   "keywords": [
     "claude-code",

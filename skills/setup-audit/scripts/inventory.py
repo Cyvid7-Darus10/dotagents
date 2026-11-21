@@ -7,8 +7,10 @@ mined from local transcripts, then a ranked list of hygiene findings
 (unused, duplicate, failing or never-signed-in items, an overflowing skill
 listing, an oversized memory index). It changes nothing on disk.
 
---live also runs `claude mcp list` to get each server's connection status,
-including claude.ai connectors. That starts every configured server once.
+--live also runs `claude mcp list` (from HOME, so no project .mcp.json is picked
+up) to get each server's connection status, including claude.ai connectors.
+That launches every user-scoped and plugin server once. Targets are reduced to
+scheme://host/path or the executable name, so tokens in URLs or args never print.
 
 Usage: python3 inventory.py [--json] [--days N] [--live]
 """
@@ -19,6 +21,7 @@ import json
 import os
 import shutil
 import subprocess
+from urllib.parse import urlsplit
 import re
 import statistics
 import sys
@@ -257,12 +260,25 @@ def settings_section(settings: dict) -> dict:
     }
 
 
+def safe_target(raw: str) -> str:
+    """Reduce a server target to what's safe to print: scheme://host/path for URLs
+    (no userinfo or query, where tokens hide) and the bare executable for commands."""
+    raw = raw.replace("(HTTP)", "").replace("(SSE)", "").strip()
+    if raw.startswith(("http://", "https://")):
+        parts = urlsplit(raw)
+        return f"{parts.scheme}://{parts.hostname or ''}{parts.path}".rstrip("/")
+    return Path(raw.split()[0]).name if raw else ""
+
+
 def live_mcp_status() -> list[dict]:
-    """Parse `claude mcp list`: one row per server, claude.ai connectors and plugin servers included."""
+    """Parse `claude mcp list`: one row per server, claude.ai connectors and plugin servers included.
+
+    Runs from HOME so a project's .mcp.json in the current folder is not launched.
+    """
     if not shutil.which("claude"):
         return []
     try:
-        out = subprocess.run(["claude", "mcp", "list"], capture_output=True, text=True, timeout=180).stdout
+        out = subprocess.run(["claude", "mcp", "list"], capture_output=True, text=True, timeout=180, cwd=HOME).stdout
     except (OSError, subprocess.TimeoutExpired) as err:
         print(f"warning: claude mcp list failed: {err}", file=sys.stderr)
         return []
@@ -272,7 +288,7 @@ def live_mcp_status() -> list[dict]:
             continue
         name, rest = line.split(": ", 1)
         target, status = rest.rsplit(" - ", 1)
-        target = target.replace("(HTTP)", "").replace("(SSE)", "").strip()
+        target = safe_target(target)
         state = "connected" if "Connected" in status else "needs_auth" if "authentication" in status else "failed"
         rows.append({"name": name.strip(), "target": target, "state": state})
     return rows
@@ -305,7 +321,7 @@ def server_findings(report: dict, live: list[dict], history_days: float) -> list
         elif uses == 0:
             out.append(finding("unused", row["name"], f"0 tool calls in {history_days:.0f} days", "disable or scope to a project"))
         if row["target"].startswith("http"):
-            by_target.setdefault(row["target"].rstrip("/"), []).append(row["name"])
+            by_target.setdefault(row["target"], []).append(row["name"])
     for target, names in by_target.items():
         if len(names) > 1:
             out.append(finding("duplicate", " + ".join(names), f"same endpoint {target}", "keep the one you use, remove the rest"))
