@@ -5,7 +5,7 @@ paths:
 ---
 # Swift Patterns
 
-> This file extends [common/patterns.md](../common/patterns.md) with Swift specific content.
+> Extends the global `AGENTS.md` with Swift-specific guidance.
 
 ## Protocol-Oriented Design
 

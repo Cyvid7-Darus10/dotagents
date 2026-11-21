@@ -5,7 +5,7 @@ paths:
 ---
 # Python Testing
 
-> This file extends [common/testing.md](../common/testing.md) with Python specific content.
+> Extends the global `AGENTS.md` with Python-specific guidance.
 
 ## Framework
 

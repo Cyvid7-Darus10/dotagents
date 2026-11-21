@@ -5,7 +5,7 @@ paths:
 ---
 # Python Patterns
 
-> This file extends [common/patterns.md](../common/patterns.md) with Python specific content.
+> Extends the global `AGENTS.md` with Python-specific guidance.
 
 ## Protocol (Duck Typing)
 

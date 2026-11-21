@@ -1,28 +1,24 @@
-# Agent Instructions
+# You are inside an agent-setup repo
 
-Curated setup (trimmed 2026-07-06 — full previous config in `~/.claude/backups/pre-cleanup-2026-07-06.tar.gz`).
+This repo is a portable setup for coding agents: global instructions, skills, a `personal_docs/` convention, and an auditor that cleans up an existing setup.
 
-## Core Principles
+## On session start: audit mode
 
-1. **Security-First** — never hardcode secrets; validate all inputs
-2. **Test-Driven** — write tests before implementation
-3. **Immutability** — prefer new objects over mutation (except where language idioms differ, e.g. Go)
+If the user opened this repo without asking for something specific, or asks to "set up", "install", "audit" or "clean up", **run the setup audit**:
 
-## Available Agents
+1. Read `skills/setup-audit/SKILL.md` and follow its phases in order.
+2. Work **with** the user. Explain their current setup and its measured cost in plain language, ask how they work, then propose a tailored plan with why / effect / undo for each change.
+3. Phases 0–4 are read-only. Change nothing until the user approves the plan. Running `measure.py` costs API usage, so ask first.
+4. Installing goes through `./install.sh --dry-run` first, then `./install.sh` with the options they chose.
 
-| Agent | When to Use |
-|-------|-------------|
-| planner | Complex features, refactoring |
-| architect | Architectural decisions |
-| tdd-guide | New features, bug fixes |
-| code-reviewer | After writing/modifying code |
-| security-reviewer | Before commits, sensitive code |
-| build-error-resolver | When build fails |
-| typescript-reviewer | TypeScript/JavaScript changes |
-| python-reviewer | Python changes |
-| database-reviewer | Schema design, query optimization (Postgres/Supabase) |
-| docs-lookup | Library/API documentation questions |
-| e2e-runner | Critical user flows |
-| refactor-cleaner | Dead code cleanup |
+If the user asks for something else (editing this repo, a question), do that instead, and mention in one line that `setup-audit` is available.
 
-Launch independent agents in parallel.
+## Working on this repo
+
+- It is **public**. No personal data, app names, account IDs, emails or paths under a real home directory.
+- Lean beats complete. Every skill, agent and rule installed from here costs context in every user session. Add something only if it changes outcomes, and say when to use it in `docs/TOOLKIT.md`.
+- `global/AGENTS.md` is the agent-neutral source of truth and stays under ~120 lines. Claude-only extras go in `global/CLAUDE.md`.
+- Language rules live in `rules/<lang>/` with `paths:` frontmatter, so they load only for matching files.
+- Skills: one folder each, `SKILL.md` with `name` + a `description` that says when to use it. Scripts stdlib-only, read-only unless the skill says otherwise.
+- After changing `install.sh` or `skills/setup-audit/scripts/`, run `./install.sh --dry-run` and `python3 -I skills/setup-audit/scripts/inventory.py`, and check that both succeed.
+- Conventional commits. No AI attribution lines.

@@ -1,25 +1,24 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "claude-code-config",
-  "description": "Production-ready Claude Code configuration — 33 agents, 67 commands, 66 skills, 66 rules for rapid app development.",
+  "name": "dotagents",
+  "description": "Lean, agent-agnostic setup: global AGENTS.md, personal_docs convention, setup-audit skill, curated skills and path-scoped rules.",
   "owner": {
-    "name": "Cyrus David Pastelero",
-    "email": ""
+    "name": "Cyrus David Pastelero"
   },
   "metadata": {
-    "description": "Claude Code config built on Everything Claude Code (ECC) + obra/superpowers"
+    "description": "Lean, agent-agnostic setup: global AGENTS.md, personal_docs convention, setup-audit skill, curated skills and path-scoped rules."
   },
   "plugins": [
     {
-      "name": "claude-code-config",
+      "name": "dotagents",
       "source": "./",
-      "description": "33 agents, 67 commands, 66 skills, 66 rules — brainstorming, TDD, code review, security, multi-agent orchestration, and more.",
-      "version": "1.0.0",
+      "description": "Lean, agent-agnostic setup: global AGENTS.md, personal_docs convention, setup-audit skill, curated skills and path-scoped rules.",
+      "version": "3.0.0",
       "author": {
         "name": "Cyrus David Pastelero"
       },
-      "homepage": "https://github.com/Cyvid7-Darus10/claude-code-config",
-      "repository": "https://github.com/Cyvid7-Darus10/claude-code-config",
+      "homepage": "https://github.com/Cyvid7-Darus10/dotagents",
+      "repository": "https://github.com/Cyvid7-Darus10/dotagents",
       "license": "MIT",
       "keywords": [
         "agents",
@@ -28,9 +27,7 @@
         "commands",
         "tdd",
         "code-review",
-        "security",
-        "brainstorming",
-        "superpowers"
+        "security"
       ],
       "category": "workflow",
       "tags": [
@@ -40,8 +37,7 @@
         "commands",
         "tdd",
         "code-review",
-        "security",
-        "brainstorming"
+        "security"
       ],
       "strict": false
     }

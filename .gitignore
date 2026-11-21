@@ -34,3 +34,6 @@ claude-mission-control/
 
 # Local overrides
 settings.local.json
+
+# Private per-project agent notes
+personal_docs/

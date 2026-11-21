@@ -7,7 +7,7 @@ paths:
 ---
 # TypeScript/JavaScript Testing
 
-> This file extends [common/testing.md](../common/testing.md) with TypeScript/JavaScript specific content.
+> Extends the global `AGENTS.md` with TypeScript/JavaScript-specific guidance.
 
 ## E2E Testing
 

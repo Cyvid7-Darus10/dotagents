@@ -5,7 +5,7 @@ paths:
 ---
 # Swift Testing
 
-> This file extends [common/testing.md](../common/testing.md) with Swift specific content.
+> Extends the global `AGENTS.md` with Swift-specific guidance.
 
 ## Framework
 
