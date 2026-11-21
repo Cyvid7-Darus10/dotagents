@@ -1,27 +1,25 @@
 # <Project name>: agent notes
 
-> Private notes for coding agents (and me). Not committed. Read this file first, then open the others only when the task needs them.
+> Private notes for coding agents and me. Git-ignored, never committed. Every agent reads this file first.
+> Keep it under 60 lines. Details go in the files below, opened only when the task needs them.
 
-**What it is:** <one sentence: what this project does and for whom>
+**What it is:** <one sentence: what it does and for whom>
 **Stack:** <languages, frameworks, hosting, key services>
-**Status:** <active / paused / shipped, plus date> · **Last updated:** <YYYY-MM-DD>
-
-## Start here
-- Run / test / deploy: see [runbook.md](runbook.md)
-- How it fits together: see [architecture.md](architecture.md)
-- Traps that already cost time: see [gotchas.md](gotchas.md)
-- Why things are the way they are: see [decisions.md](decisions.md)
+**Status:** <active / paused / shipped> · **Updated:** <YYYY-MM-DD>
 
 ## Current focus
-<what is in progress right now, or "none"; link the latest notes/ entry>
+<one or two lines, or "none". Active tasks live in work/>
 
-## Map
-| File | Holds |
+## Read when
+| Before you… | Open |
 |---|---|
-| architecture.md | Components, data flow, key files, external services |
-| runbook.md | Commands to run, test, build, deploy, release; env var *names* |
-| gotchas.md | Symptom → cause → fix, for anything non-obvious |
-| decisions.md | Dated decisions: what, why, alternatives rejected |
-| learnings.md | Lessons that apply beyond one bug (patterns, preferences, process) |
-| notes/ | Dated session notes and handoffs: `YYYY-MM-DD-topic.md` |
-| docs/ | Longer reference: specs, research, API notes |
+| run, test, build, deploy | runbook.md |
+| debug anything | gotchas.md (search the symptom) |
+| change structure or add a service | architecture.md, then decisions.md |
+| reverse or redo something that looks odd | decisions.md |
+| resume unfinished work | work/ |
+
+Files that don't exist yet have no entries. Create one from the project-notes templates on its first entry.
+
+## Never do here
+<project-specific traps worth stating up front, e.g. "never run migrations against prod from local". Delete if none>

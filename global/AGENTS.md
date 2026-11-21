@@ -49,13 +49,13 @@ Loaded by every coding agent I use (Claude Code, Codex, Gemini CLI, Cursor). Kee
 
 ## Project notes: `personal_docs/`
 
-Every project or working folder can have a private, git-ignored `personal_docs/`. It is the shared memory for any agent working there.
+Each project has a private, git-ignored `personal_docs/`: the shared memory for every agent working there. Details: the `project-notes` skill.
 
-- **Start:** if the nearest `personal_docs/README.md` (cwd up to the git root) exists, read it before the first change. Open the other files only when the task needs them: `gotchas.md` before debugging, `runbook.md` before running things.
-- **Missing:** for non-trivial work, create it from the `project-notes` skill templates: `README.md` (index + current focus), `architecture.md`, `runbook.md`, `gotchas.md`, `decisions.md`, `learnings.md`, `notes/`, `docs/`.
-- **Write back** what the code and git can't tell the next agent: traps → `gotchas.md`, choices + why → `decisions.md`, commands/env var names → `runbook.md`, structure → `architecture.md`. Date entries `YYYY-MM-DD`. Fix stale entries.
-- **Handoff:** after substantial work, write `notes/YYYY-MM-DD-topic.md` (Goal / Done / State / Next).
-- Never put secrets in it. It must stay git-ignored (global excludes file), never committed.
+- **Start:** read the nearest `personal_docs/README.md` (cwd up to the git root) before the first change. Open other files only when its "Read when" table says so. Resuming? Open `work/<task>.md` and start from its **Next** line.
+- **Missing:** for non-trivial work, create it (`notes.py init` in the project-notes skill): README + `work/` only. Topic files appear on their first entry.
+- **Write back** what code and git can't tell the next agent: traps → `gotchas.md`, choices + why → `decisions.md`, commands and env var names → `runbook.md`, structure → `architecture.md`. Each entry gets a source (path:line or commit) and `Verified: YYYY-MM-DD`. Fix stale entries instead of adding contradictions.
+- **Unfinished work:** keep `work/<task>.md` (plan checklist, state, next) current. Archive it when done.
+- Never secrets or personal data. Never committed.
 
 ## Context hygiene
 

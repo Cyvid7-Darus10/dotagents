@@ -1,71 +1,87 @@
 ---
 name: project-notes
-description: Create, read and maintain the private per-project knowledge base in `personal_docs/` (architecture, runbook, gotchas, decisions, learnings, dated session notes). Use when starting work in a folder that has no personal_docs yet, when you learn something non-obvious worth keeping, when asked to "write this down", "take notes", "remember this for the project", or to write a handoff at the end of a substantial session.
+description: Create, read and maintain the private per-project knowledge base in `personal_docs/` (README index, active work items, runbook, gotchas, decisions, architecture, learnings). Use when starting non-trivial work in a folder, when resuming unfinished work, when you learn something non-obvious worth keeping, when asked to "write this down", "take notes" or "remember this for the project", or before ending a substantial session.
 ---
 
 # project-notes
 
-`personal_docs/` is a private, git-ignored folder at the root of a project (or any working folder). It holds what agents and the user learn about that project, so the next session, in any agent, starts informed. It is agent-neutral plain markdown. Claude, Codex, Gemini and Cursor all read and write it the same way.
+`personal_docs/` is a private, git-ignored folder in each project. It is the shared memory for every agent that works there (Claude Code, Codex, Gemini, Cursor): plain markdown, same rules for all. Its job is to make the next session start informed and resume unfinished work without rediscovering anything.
 
-## Where it lives
-
-- The nearest `personal_docs/` going up from the working directory, stopping at the git root (or `$HOME`).
-- No git repo: the working folder itself.
-- It must be git-ignored. Check with `git check-ignore -q personal_docs/ && echo ignored`. If it is not ignored, add `personal_docs/` to the global excludes file (`git config --global core.excludesFile`, default `~/.config/git/ignore`), not to the repo's `.gitignore`. Tell the user you did.
+Helper: `scripts/notes.py brief | init | check` (stdlib Python). With the dotagents installer, Claude Code runs `brief` at session start, so the README and active work are already in context when one exists.
 
 ## Layout
 
 ```
 personal_docs/
-├── README.md        index + current focus. Read this first, always. Keep under ~60 lines
-├── architecture.md  components, data flow, key files, external services
-├── runbook.md       run/test/build/deploy commands; env var NAMES and where values live
-├── gotchas.md       symptom → cause → fix, newest first
-├── decisions.md     dated decisions: why, what was rejected, when to revisit
-├── learnings.md     lessons beyond one bug: preferences, patterns, process
-├── notes/           YYYY-MM-DD-topic.md session notes and handoffs
-└── docs/            longer reference: specs, research, API notes
+├── README.md         always read · ≤60 lines · what it is, current focus, "read when" map
+├── work/             one file per unfinished task: goal · plan checklist · state · next
+├── runbook.md        ┐
+├── gotchas.md        │ stable knowledge, opened only when the task needs it
+├── decisions.md      │ (the README "read when" table says when)
+├── architecture.md   │ created on first entry, never as empty templates
+├── learnings.md      ┘
+├── docs/             longer reference: specs, research, API notes
+└── archive/          finished work items and rolled-up old entries
 ```
 
-Templates are in `templates/` next to this file.
+Templates are in `templates/`.
 
-## Init (folder has no personal_docs)
+## Principles
 
-1. Copy `templates/` to `<root>/personal_docs/`. Skip `notes/_template.md` (keep it only as a reference).
-2. Fill `README.md`, `architecture.md` and `runbook.md` from what you can verify: manifests, scripts, CI config, README, entry points. Leave unknowns as `<unknown>` rather than guessing.
-3. Seed `gotchas.md` and `decisions.md` only with things you actually found, such as TODO/FIXME clusters or comments explaining odd code. Don't invent entries.
-4. Confirm git ignores it. Tell the user in one line what you created.
+1. **Progressive disclosure.** Only `README.md` is read every session. Everything else is opened on a trigger ("before you debug → gotchas.md"). This keeps the per-session cost at about 60 lines.
+2. **Lazy creation.** `init` creates only `README.md` and `work/`. A topic file appears when it gets its first real entry. Empty skeletons teach agents to ignore the folder.
+3. **Resume, don't recap.** Unfinished work lives in `work/<task>.md` with a `**Next:**` line. Any agent can pick it up cold.
+4. **Every fact has a source and a date.** Entries carry `**Source:**` (path:line or commit) and `**Verified:** YYYY-MM-DD`. Old entries get re-checked before anyone relies on them, and `check` flags those older than 90 days.
+5. **Budgets.** README ≤60 lines, topic files ≤250 lines. Over budget means roll up: merge duplicates, move the detail to `docs/`, move dead entries to `archive/`.
 
-## Read (every session)
+## Where it lives
 
-- Read `personal_docs/README.md` before the first change. Open other files only when the task touches them. Read `gotchas.md` before debugging and `runbook.md` before running things.
-- Treat it as the user's notes: likely right, but verify a fact against the code before acting on it. If a note is stale, fix it.
+- The nearest `personal_docs/` from the working directory upward, stopping at the git root. If there's no repo, the working folder.
+- Monorepo: one at the root. Add `packages/<x>/personal_docs/` only when a package has its own runbook and gotchas, and link it from the root README.
+- It must be git-ignored through the **global** excludes file, never the repo's `.gitignore` (that would reveal it to the team). `init` and `check` both verify this.
 
-## Write back (when it earns a line)
+## Session start
 
-Write when you learn something a future agent could not get cheaply from the code or git history:
+1. Run `notes.py brief` (skip it if its output is already in context from the hook).
+2. Nothing there and the task is non-trivial (more than a quick question or one-line fix)? Run `notes.py init`. Fill README's what / stack / focus from what you can verify (manifests, scripts, CI, the repo README). Write `<unknown>` rather than guess. Tell the user in one line.
+3. Resuming? Open the matching `work/` file and start from its **Next** line.
+4. Treat notes as likely right, not certainly right. Verify a fact against the code before acting on it, and fix it if it's stale.
+
+## While working: write back when it earns a line
+
+Write only what the next agent couldn't get cheaply from the code or git history.
 
 | You learned | Goes in |
 |---|---|
-| A trap that cost time (wrong env, flaky step, misleading error) | `gotchas.md` |
-| A choice between options, with the reason | `decisions.md` |
-| How to run, test, deploy or release, or a new env var | `runbook.md` |
-| A structural fact (new service, data flow, key file) | `architecture.md` |
-| A preference or pattern for working here | `learnings.md` |
+| A trap that cost time: misleading error, wrong env, flaky step | `gotchas.md` |
+| A choice between options, and why | `decisions.md` |
+| How to run, test, deploy or release; an env var **name** and where its value lives | `runbook.md` |
+| A structural fact: a service, a data flow, a key file | `architecture.md` |
+| A pattern or preference for working in this project | `learnings.md` |
+| A project-wide "never do this" | README **Never do here** |
 
-Rules:
-- Date every entry (`YYYY-MM-DD`, absolute, never "yesterday"). Newest first.
-- Edit or delete wrong or stale entries; don't pile contradictions on top.
-- No secrets, tokens or personal data. Env var names only, with where the value lives.
-- Don't copy code or restate the git log. Link paths and commits instead.
-- Update `README.md`'s "Current focus" and "Last updated" when the focus changes.
+To create a topic file, copy its template, then add the entry. Use absolute dates, newest first. Edit or delete wrong entries rather than stacking contradictions.
 
-## Handoff (end of substantial work, or when asked)
+## Multi-session work: `work/`
 
-Write `notes/YYYY-MM-DD-<topic>.md` using `templates/notes/_template.md` (Goal / Done / State / Next). Link it from README "Current focus". One file per session topic. Append to today's file if it exists.
+- Start a `work/<short-task-name>.md` from `templates/work/_template.md` when a task won't finish this session, or when the user asks to plan something.
+- Keep the **Plan** checklist and the **Next** line current as you go, not only at the end.
+- Done: set Status to done, add a final Log line, move the file to `archive/`, and move any lasting lessons into the topic files.
+
+## End of a substantial session
+
+1. Update the `work/` file (State, Next, Log) or archive it.
+2. Update the README's **Current focus** and **Updated** date.
+3. Run `notes.py check`. Fix what it flags: stale entries, dead paths, budget overruns, anything that looks like a secret.
+
+## Never
+
+- Secrets, tokens, customer data or personal data. Store env var **names** only, with where the value lives.
+- Copied code or restated git log. Link the path or commit instead.
+- Committing it. If a note would help the whole team, suggest moving it into the repo's docs. The user decides.
 
 ## Relation to other memory
 
-- Agent-level memory (Claude auto-memory, Codex memories) is for who the user is and how they like to work, across all projects.
-- `personal_docs/` is for this project. Project facts go here, so every agent sees them.
-- Committed docs (`README`, `CLAUDE.md`/`AGENTS.md` in the repo) are for the team. Promote a note there only when the user asks.
+- **Agent memory** (Claude auto-memory, Codex memories): who the user is and how they work, across projects.
+- **`personal_docs/`:** facts about this project, visible to every agent.
+- **Repo docs** (`README`, the committed `AGENTS.md`/`CLAUDE.md`): team-facing. Content gets promoted there only when the user says so.

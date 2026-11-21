@@ -6,8 +6,9 @@ Never overwrites a value the user already set. It only:
   - unions permissions.deny
   - with --hooks: adds the template's hook entries whose command isn't present yet
   - with --sounds: adds Stop/Notification sound hooks
+  - with --notes-hook: adds a SessionStart hook that prints the project's personal_docs brief
 
-Usage: merge_settings.py TEMPLATE TARGET [--hooks] [--sounds] [--dry-run]
+Usage: merge_settings.py TEMPLATE TARGET [--hooks] [--sounds] [--notes-hook] [--dry-run]
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ SOUND_HOOKS = {
     "Stop": 'afplay "$HOME/.claude/sounds/jobs-done.mp3" &',
     "Notification": 'afplay "$HOME/.claude/sounds/work-work.mp3" &',
 }
+NOTES_HOOK = 'python3 -I "$HOME/.claude/skills/project-notes/scripts/notes.py" brief'
 
 
 def read_json(path: Path) -> dict:
@@ -49,7 +51,7 @@ def merge_hooks(target_hooks: dict, extra: dict) -> list[str]:
     return added
 
 
-def merge(template: dict, current: dict, hooks: bool, sounds: bool) -> tuple[dict, list[str]]:
+def merge(template: dict, current: dict, hooks: bool, sounds: bool, notes: bool = False) -> tuple[dict, list[str]]:
     result = copy.deepcopy(current)
     changes = []
     if "cleanupPeriodDays" not in result:
@@ -65,6 +67,9 @@ def merge(template: dict, current: dict, hooks: bool, sounds: bool) -> tuple[dic
     if sounds:
         extra = {e: [{"hooks": [{"type": "command", "command": c}]}] for e, c in SOUND_HOOKS.items()}
         changes += [f"hook {c}" for c in merge_hooks(result.setdefault("hooks", {}), extra)]
+    if notes:
+        extra = {"SessionStart": [{"hooks": [{"type": "command", "command": NOTES_HOOK}]}]}
+        changes += [f"hook {c}" for c in merge_hooks(result.setdefault("hooks", {}), extra)]
     return result, changes
 
 
@@ -74,7 +79,8 @@ def main(argv: list[str]) -> int:
         print(__doc__, file=sys.stderr)
         return 2
     template_path, target_path = Path(paths[0]), Path(paths[1])
-    merged, changes = merge(read_json(template_path), read_json(target_path), "--hooks" in argv, "--sounds" in argv)
+    merged, changes = merge(read_json(template_path), read_json(target_path), "--hooks" in argv, "--sounds" in argv,
+                            "--notes-hook" in argv)
     for change in changes:
         print(f"  {'[dry-run] ' if '--dry-run' in argv else ''}settings: {change}")
     if not changes:

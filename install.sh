@@ -11,11 +11,12 @@ WITH_PLUGINS=true
 WITH_HOOKS=false
 WITH_SOUNDS=false
 WITH_ADHD=false
+WITH_NOTES_HOOK=true
 SKILLS=""   # comma-separated; empty = all
 
 usage() {
   cat <<EOF
-Usage: ./install.sh [--dry-run] [--skills a,b,c] [--no-plugins] [--adhd] [--hooks] [--sounds]
+Usage: ./install.sh [--dry-run] [--skills a,b,c] [--no-plugins] [--adhd] [--no-notes-hook] [--hooks] [--sounds]
 
 Installs (symlinks):
   global/AGENTS.md   -> ~/.claude/AGENTS.md, ~/.codex/AGENTS.md, ~/.gemini/GEMINI.md
@@ -26,6 +27,7 @@ Installs (symlinks):
 Configures:
   personal_docs/ in the global git excludes file
   settings.json: cleanupPeriodDays=90 (if unset), permission deny list (merged)
+  Claude Code SessionStart hook: prints the project's personal_docs brief (skip: --no-notes-hook)
   plugins i-have-adhd + context7 MCP (skip: --no-plugins)
 Opt-in:
   --hooks   token-saving Read/PostToolUse hooks (needs Node 18+)
@@ -43,6 +45,7 @@ while [[ $# -gt 0 ]]; do
     --hooks) WITH_HOOKS=true ;;
     --sounds) WITH_SOUNDS=true ;;
     --adhd) WITH_ADHD=true ;;
+    --no-notes-hook) WITH_NOTES_HOOK=false ;;
     --skills) SKILLS="${2:?--skills needs a comma-separated list}"; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
@@ -133,6 +136,7 @@ install_settings() {
   local flags=()
   $WITH_HOOKS && flags+=(--hooks)
   $WITH_SOUNDS && flags+=(--sounds)
+  if $WITH_NOTES_HOOK && { [ -z "$SKILLS" ] || [[ ",$SKILLS," == *,project-notes,* ]]; }; then flags+=(--notes-hook); fi
   $DRY_RUN && flags+=(--dry-run)
   python3 -I "$REPO/scripts/merge_settings.py" "$REPO/settings.json" "$CLAUDE_DIR/settings.json" "${flags[@]}"
   if $WITH_HOOKS; then

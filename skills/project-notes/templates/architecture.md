@@ -14,5 +14,5 @@
 ## Data
 <main entities/tables, where the source of truth lives>
 
-## Key files
+## Key files (verified <YYYY-MM-DD>)
 - `<path>`: <why it matters>

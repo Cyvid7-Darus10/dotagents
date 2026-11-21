@@ -45,6 +45,7 @@ Opening an agent in the repo starts **audit mode** ([`AGENTS.md`](AGENTS.md)). Y
 |---|---|
 | `--skills a,b,c` | Link only these skills (default: all) |
 | `--adhd` | Turn on i-have-adhd for every session (costs ~2.5k tokens/session; off by default) |
+| `--no-notes-hook` | Don't auto-load `personal_docs/` at Claude Code session start |
 | `--no-plugins` | Skip installing the i-have-adhd plugin (on demand via `/i-have-adhd`) and the context7 MCP server |
 | `--hooks` | Token-saving Read/PostToolUse hooks (needs Node 18+) |
 | `--sounds` | macOS notification sounds |
@@ -86,7 +87,7 @@ dotagents/
 │   └── CLAUDE.md        ← imports AGENTS.md + Claude-only extras
 ├── skills/              ← 24 skills, each says when it applies
 │   ├── setup-audit/     ← the guided auditor (+ inventory.py, measure.py)
-│   └── project-notes/   ← personal_docs convention + templates
+│   └── project-notes/   ← personal_docs convention, templates, notes.py
 ├── agents/  commands/   ← reviewers, tdd-guide, build fixer; /tdd /verify /ponytail…
 ├── rules/<lang>/        ← path-scoped: load only when matching files are touched
 ├── docs/                ← TOOLKIT, CONTEXT, EXPERIMENTS
@@ -105,21 +106,34 @@ dotagents/
 
 ## personal_docs
 
+Every project gets a private, git-ignored notebook that all your agents share. Agents read it first, resume unfinished work from it, and write back what they learn.
+
 ```
 your-project/
 └── personal_docs/        git-ignored via your global excludes file, never committed
-    ├── README.md         index + current focus; every agent reads this first
-    ├── architecture.md   components, data flow, key files, services
-    ├── runbook.md        run / test / deploy; env var names, never values
-    ├── gotchas.md        symptom → cause → fix
-    ├── decisions.md      what was chosen, why, what was rejected
-    ├── learnings.md      lessons beyond one bug
-    ├── notes/            YYYY-MM-DD-topic.md handoffs (goal / done / state / next)
-    └── docs/             longer reference
+    ├── README.md         read every session · ≤60 lines · focus + a "read when" map
+    ├── work/             one file per unfinished task: plan · state · next step
+    ├── runbook.md        ┐
+    ├── gotchas.md        │ opened only when the task needs them
+    ├── decisions.md      │ created on first entry, never as empty templates
+    ├── architecture.md   │ every entry carries a source and a "verified" date
+    ├── learnings.md      ┘
+    ├── docs/             longer reference
+    └── archive/          finished work, retired entries
 ```
 
+| Design choice | Why |
+|---|---|
+| Only `README.md` is read every session | Each session pays for about 60 lines, not the whole folder |
+| `work/` with a **Next** line per task | Any agent can resume cold, even in a different tool than yesterday |
+| Source + `Verified:` date on each entry | Notes rot. Old entries get re-checked instead of trusted blindly |
+| Created lazily, with size budgets | Empty or bloated notes get ignored. Small, real notes get read |
+| Claude Code loads it automatically | A SessionStart hook runs `notes.py brief`. It prints nothing where there are no notes. Other agents follow the same rule from `AGENTS.md` |
+
+`notes.py check` lints a project's notes: confirms they're git-ignored, flags entries older than 90 days, paths that no longer exist, files over budget, and anything that looks like a secret.
+
 - **Why not `CLAUDE.md`?** It's committed and team-facing, and only one agent reads it. `personal_docs/` is private, structured, and shared by every agent you use.
-- **Why not agent memory?** Agent memory is per tool and per user. It's good for how you like to work. Project facts belong with the project.
+- **Why not agent memory?** Agent memory is per tool and per user. It suits how you like to work. Project facts belong with the project.
 
 ## Toolkit: when to reach for what
 

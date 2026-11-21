@@ -1,5 +1,7 @@
 # Runbook
 
+Verified <YYYY-MM-DD>. Re-run a command before trusting an old row.
+
 | Task | Command | Notes |
 |---|---|---|
 | Install | | |
