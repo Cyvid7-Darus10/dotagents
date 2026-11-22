@@ -7,7 +7,7 @@ description: Create, read and maintain the private per-project knowledge base in
 
 `personal_docs/` is a private, git-ignored folder in each project. It is the shared memory for every agent that works there (Claude Code, Codex, Gemini, Cursor): plain markdown, same rules for all. Its job is to make the next session start informed and resume unfinished work without rediscovering anything.
 
-Helper: `scripts/notes.py brief | init | check` (stdlib Python). With the dotagents installer, Claude Code runs `brief` at session start, so the README and active work are already in context when one exists.
+Helper: `scripts/notes.py brief | init | check` (stdlib Python). With the dot-agent installer, Claude Code runs `brief` at session start, so the README and active work are already in context when one exists.
 
 ## Layout
 

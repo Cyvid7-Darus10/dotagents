@@ -1,24 +1,24 @@
 #!/bin/bash
-# One-line installer for dotagents.
+# One-line installer for dot-agent.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dotagents/main/setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dot-agent/main/setup.sh | bash
 #
 # Pass flags through to install.sh:
-#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dotagents/main/setup.sh | bash -s -- --skills humanizer,project-notes,setup-audit
-#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dotagents/main/setup.sh | bash -s -- --skills humanizer,project-notes,setup-audit
-#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dotagents/main/setup.sh | bash -s -- --dry-run
+#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dot-agent/main/setup.sh | bash -s -- --skills humanizer,project-notes,setup-audit
+#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dot-agent/main/setup.sh | bash -s -- --skills humanizer,project-notes,setup-audit
+#   curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dot-agent/main/setup.sh | bash -s -- --dry-run
 #
 # Environment overrides:
-#   DOTAGENTS_REPO  Git URL to clone (default: this repo on GitHub)
-#   DOTAGENTS_REF   Branch/tag/commit to check out (default: main)
-#   DOTAGENTS_SRC   Where to clone to (default: $HOME/.local/share/dotagents)
+#   DOT_AGENT_REPO  Git URL to clone (default: this repo on GitHub)
+#   DOT_AGENT_REF   Branch/tag/commit to check out (default: main)
+#   DOT_AGENT_SRC   Where to clone to (default: $HOME/.local/share/dot-agent)
 
 set -euo pipefail
 
-REPO="${DOTAGENTS_REPO:-https://github.com/cyruspastelero/dotagents.git}"
-REF="${DOTAGENTS_REF:-main}"
-DEST="${DOTAGENTS_SRC:-$HOME/.local/share/dotagents}"
+REPO="${DOT_AGENT_REPO:-https://github.com/cyruspastelero/dot-agent.git}"
+REF="${DOT_AGENT_REF:-main}"
+DEST="${DOT_AGENT_SRC:-$HOME/.local/share/dot-agent}"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'

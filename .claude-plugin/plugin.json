@@ -1,13 +1,13 @@
 {
-  "name": "dotagents",
+  "name": "dot-agent",
   "version": "3.0.0",
   "description": "Lean, agent-agnostic setup: global AGENTS.md, personal_docs convention, setup-audit skill, curated skills and path-scoped rules.",
   "author": {
     "name": "Cyrus David Pastelero",
     "url": "https://github.com/cyruspastelero"
   },
-  "homepage": "https://github.com/cyruspastelero/dotagents",
-  "repository": "https://github.com/cyruspastelero/dotagents",
+  "homepage": "https://github.com/cyruspastelero/dot-agent",
+  "repository": "https://github.com/cyruspastelero/dot-agent",
   "license": "MIT",
   "keywords": [
     "claude-code",

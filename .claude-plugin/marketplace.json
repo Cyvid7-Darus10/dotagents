@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "dotagents",
+  "name": "dot-agent",
   "description": "Lean, agent-agnostic setup: global AGENTS.md, personal_docs convention, setup-audit skill, curated skills and path-scoped rules.",
   "owner": {
     "name": "Cyrus David Pastelero"
@@ -10,15 +10,15 @@
   },
   "plugins": [
     {
-      "name": "dotagents",
+      "name": "dot-agent",
       "source": "./",
       "description": "Lean, agent-agnostic setup: global AGENTS.md, personal_docs convention, setup-audit skill, curated skills and path-scoped rules.",
       "version": "3.0.0",
       "author": {
         "name": "Cyrus David Pastelero"
       },
-      "homepage": "https://github.com/cyruspastelero/dotagents",
-      "repository": "https://github.com/cyruspastelero/dotagents",
+      "homepage": "https://github.com/cyruspastelero/dot-agent",
+      "repository": "https://github.com/cyruspastelero/dot-agent",
       "license": "MIT",
       "keywords": [
         "agents",
