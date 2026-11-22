@@ -1,6 +1,6 @@
 <div align="center">
 
-# dotagents
+# dot-agent
 
 **Dotfiles for coding agents.** One lean setup for Claude Code, Codex, Gemini CLI and Cursor, plus a hygiene check that trims what you don't use.
 
@@ -9,17 +9,20 @@
 
 </div>
 
-Connectors, plugins and skills you tried once stay installed, and each one loads into every session before you type. The agent starts with less room and picks the wrong tools. dotagents gives you:
+Connectors, plugins and skills you tried once stay installed, and each one loads into every session before you type. The agent starts with less room and picks the wrong tools. dot-agent gives you:
 
 - **A setup audit.** It finds unused, failing, duplicate and never-signed-in connectors, plugins and skills, then removes them once you approve. On one setup it cut startup tokens by 11–14%. → [docs/AUDIT.md](docs/AUDIT.md)
 - **One instruction file for every agent.** [`global/AGENTS.md`](global/AGENTS.md) is linked into Claude Code, Codex and Gemini CLI (pasted into Cursor), so they stay in sync.
 - **Shared project notes.** A private `personal_docs/` folder per project that every agent reads and updates. → [docs/PERSONAL_DOCS.md](docs/PERSONAL_DOCS.md)
 
+> [!IMPORTANT]
+> **This is my own setup, and this is how it works for me.** The instructions, skills, deny list and defaults match how I work: macOS, mostly Claude Code, Swift, TypeScript and Python. They may not suit you. Read [`global/AGENTS.md`](global/AGENTS.md) before installing, run `./install.sh --dry-run` first, and change what doesn't fit. Installing never removes anything, and everything it replaces is backed up. Cleanup happens only in the audit, and only after you approve each change. Use it at your own risk; it comes with no warranty ([MIT](LICENSE)).
+
 ## Quick start
 
 ```bash
-git clone https://github.com/cyruspastelero/dotagents.git
-cd dotagents
+git clone https://github.com/cyruspastelero/dot-agent.git
+cd dot-agent
 claude        # or: codex, gemini. This starts the audit.
 ```
 
@@ -29,7 +32,8 @@ Or install without the audit. It only adds files and removes nothing. It also ad
 
 ```bash
 ./install.sh --dry-run    # preview
-./install.sh              # install; backs up anything it replaces
+./install.sh              # install; backs up anything it replaces, then offers the audit
+./install.sh --status     # see what is on, what is off, and how to turn it on
 ```
 
 Flags, what gets linked where, and how to undo: [docs/INSTALL.md](docs/INSTALL.md).

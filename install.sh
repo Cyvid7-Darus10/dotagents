@@ -11,11 +11,20 @@ WITH_PLUGINS=false
 WITH_SOUNDS=false
 WITH_ADHD=false
 WITH_NOTES_HOOK=true
+NO_PROMPT=false
+CHOSE_PLUGINS=false  # set when a flag decided it, so we don't ask
+CHOSE_ADHD=false
 SKILLS=""   # comma-separated; empty = all
+ADHD_PLUGIN="i-have-adhd@i-have-adhd"
 
 usage() {
   cat <<EOF
-Usage: ./install.sh [--dry-run] [--skills a,b,c] [--plugins] [--adhd] [--no-notes-hook] [--sounds]
+Usage: ./install.sh [--dry-run] [--status] [--skills a,b,c] [--plugins|--no-plugins] [--adhd|--no-adhd]
+                    [--no-notes-hook] [--sounds] [--no-prompt]
+
+In a terminal it asks about the opt-in parts, shows what is on and off, and offers to start
+the cleanup audit. --no-prompt (or no terminal) takes the defaults: nothing opt-in, no audit.
+  --status        show what is on and off, change nothing
 
 Installs (symlinks):
   global/AGENTS.md   -> ~/.claude/AGENTS.md, ~/.codex/AGENTS.md, ~/.gemini/GEMINI.md
@@ -32,18 +41,21 @@ Opt-in:
   --sounds  macOS notification sounds on Stop/Notification
 Choices:
   --skills a,b,c  link only these skills (default: all in skills/)
-  --adhd          turn on i-have-adhd for every session (+~2.5k tokens/session)
+  --adhd          install, enable and turn on i-have-adhd for every session (+~2.5k tokens/session)
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=true ;;
-    --plugins) WITH_PLUGINS=true ;;
-    --no-plugins) WITH_PLUGINS=false ;;  # default now; kept so old commands still work
+    --status) exec python3 -I "$REPO/scripts/status.py" "$REPO" "$CLAUDE_DIR" ;;
+    --plugins) WITH_PLUGINS=true; CHOSE_PLUGINS=true ;;
+    --no-plugins) WITH_PLUGINS=false; CHOSE_PLUGINS=true ;;
     --hooks) echo "--hooks was removed: the hooks added output instead of trimming it (docs/EXPERIMENTS.md)." >&2 ;;
     --sounds) WITH_SOUNDS=true ;;
-    --adhd) WITH_ADHD=true ;;
+    --adhd) WITH_ADHD=true; CHOSE_ADHD=true ;;
+    --no-adhd) WITH_ADHD=false; CHOSE_ADHD=true ;;
+    --no-prompt) NO_PROMPT=true ;;
     --no-notes-hook) WITH_NOTES_HOOK=false ;;
     --skills) SKILLS="${2:?--skills needs a comma-separated list}"; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -51,6 +63,31 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+# Questions read from the terminal, so they also work under `curl ... | bash`.
+INTERACTIVE=false
+if ! $NO_PROMPT && [ -t 1 ] && (: </dev/tty) 2>/dev/null; then INTERACTIVE=true; fi
+
+# ask QUESTION DEFAULT(y|n): true when the answer is yes.
+ask() {
+  local reply hint="[y/N]"
+  [ "$2" = y ] && hint="[Y/n]"
+  printf '%s %s ' "$1" "$hint"
+  read -r reply </dev/tty || reply=""
+  [[ "${reply:-$2}" =~ ^[Yy] ]]
+}
+
+choose_options() {
+  $INTERACTIVE || return 0
+  echo "A few choices first (Enter takes the default):"
+  if ! $CHOSE_PLUGINS; then
+    if ask "  Add context7 (up-to-date library docs) and i-have-adhd on demand (/i-have-adhd)?" y; then WITH_PLUGINS=true; fi
+  fi
+  if ! $CHOSE_ADHD; then
+    if ask "  Turn on ADHD mode in every session? Short, focused replies; ~2.5k tokens per session." n; then WITH_ADHD=true; fi
+  fi
+  echo
+}
 
 say() { printf '  %s\n' "$*"; }
 run() { if $DRY_RUN; then say "[dry-run] $*"; else "$@"; fi; }
@@ -164,21 +201,41 @@ install_settings() {
   $DRY_RUN && flags+=(--dry-run)
   python3 -I "$REPO/scripts/merge_settings.py" "$REPO/settings.json" "$CLAUDE_DIR/settings.json" "${flags[@]}"
   if $WITH_SOUNDS; then link "$REPO/sounds" "$CLAUDE_DIR/sounds"; fi
-  if $WITH_ADHD; then run touch "$CLAUDE_DIR/.i-have-adhd-always"; fi
+}
+
+# Install i-have-adhd if missing, and switch it on if it was disabled.
+install_adhd_plugin() {
+  local listing
+  listing="$(claude plugin list 2>/dev/null || true)"
+  if ! grep -q "$ADHD_PLUGIN" <<<"$listing"; then
+    run claude plugin marketplace add ayghri/i-have-adhd
+    run claude plugin install "$ADHD_PLUGIN"
+  elif grep -A3 "$ADHD_PLUGIN" <<<"$listing" | grep -q disabled; then
+    run claude plugin enable "$ADHD_PLUGIN"
+    say "i-have-adhd was installed but disabled; enabled it"
+  else
+    say "i-have-adhd already installed and enabled"
+  fi
+}
+
+have_claude() {
+  command -v claude >/dev/null 2>&1 && return 0
+  say "claude CLI not found; skipping. See docs/TOOLKIT.md for manual installs."
+  return 1
+}
+
+install_adhd() {
+  echo "ADHD mode (every session)"
+  have_claude || return 0
+  install_adhd_plugin
+  run touch "$CLAUDE_DIR/.i-have-adhd-always"
+  say "always-on flag set: $CLAUDE_DIR/.i-have-adhd-always"
 }
 
 install_plugins() {
   echo "Plugins and MCP"
-  if ! command -v claude >/dev/null 2>&1; then
-    say "claude CLI not found; skipping. See docs/TOOLKIT.md for manual installs."
-    return 0
-  fi
-  if claude plugin list 2>/dev/null | grep -q 'i-have-adhd'; then
-    say "i-have-adhd already installed"
-  else
-    run claude plugin marketplace add ayghri/i-have-adhd
-    run claude plugin install i-have-adhd@i-have-adhd
-  fi
+  have_claude || return 0
+  $WITH_ADHD || install_adhd_plugin
   if claude mcp get context7 >/dev/null 2>&1; then
     say "context7 already registered"
   else
@@ -186,21 +243,38 @@ install_plugins() {
   fi
 }
 
+# The installer only adds. Cleanup is the audit, which needs the user's approval per change.
+offer_audit() {
+  echo
+  echo "Installing does not remove anything. Unused MCP servers, plugins and skills stay until"
+  echo "the cleanup audit runs. It changes nothing until you approve its plan."
+  if $INTERACTIVE && ! $DRY_RUN && command -v claude >/dev/null 2>&1 \
+    && ask "Start the cleanup audit now? (opens Claude in this repo)" y; then
+    cd "$REPO"
+    exec claude "Audit my setup."
+  fi
+  echo "Run it later: cd \"$REPO\" && claude \"Audit my setup.\""
+}
+
 main() {
   $DRY_RUN && echo "Dry run: nothing will change."
+  choose_options
   install_global_instructions
   install_components
   install_git_excludes
   install_settings
-  $WITH_PLUGINS && install_plugins
+  if $WITH_ADHD; then install_adhd; fi
+  if $WITH_PLUGINS; then install_plugins; fi
   echo
   [ -d "$BACKUP_DIR" ] && echo "Backups: $BACKUP_DIR"
-  echo "Done. Restart your agent, then run /context to see the startup cost."
+  if ! $DRY_RUN; then
+    echo
+    python3 -I "$REPO/scripts/status.py" "$REPO" "$CLAUDE_DIR"
+  fi
   echo
-  echo "Note: install.sh only adds and links files. It does not remove unused connectors,"
-  echo "MCP servers, plugins or skills. For that hygiene check, open your agent in this repo"
-  echo "(it starts audit mode) or ask it to run the setup-audit skill. Read-only preview:"
-  echo "  python3 -I \"$REPO/skills/setup-audit/scripts/inventory.py\" --live"
+  echo "Restart your agent so the changes load, then run /context to see the startup cost."
+  echo "Check again any time: ./install.sh --status"
+  offer_audit
 }
 
 main

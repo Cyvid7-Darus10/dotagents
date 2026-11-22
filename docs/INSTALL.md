@@ -1,17 +1,23 @@
 # Install
 
-`install.sh` symlinks this repo into your agents' config folders, so edits in the repo go live. It backs up anything it replaces. It only **adds** files: it removes nothing, so run the [audit](AUDIT.md) to clean up.
+`install.sh` symlinks this repo into your agents' config folders, so edits in the repo go live. It backs up anything it replaces.
+
+Installing and cleaning up are two steps:
+
+1. **Install** adds and links files. In a terminal it asks two questions (context7 + i-have-adhd on demand, and ADHD mode in every session), then prints what is on and off.
+2. **Clean up** with the [audit](AUDIT.md). The installer removes nothing, so unused MCP servers, plugins and skills stay until the audit runs. At the end the installer offers to start it; it changes nothing until you approve its plan.
 
 ```bash
 ./install.sh --dry-run                 # preview every change
-./install.sh                           # install everything
+./install.sh                           # install, answer the questions, then optionally audit
+./install.sh --status                  # what is on, what is off, and how to turn it on
 ./install.sh --skills humanizer,verify-app,project-notes,setup-audit   # pick skills
 ```
 
-One-line install with default options, without cloning first (clones to `~/.local/share/dotagents`):
+One-line install with default options, without cloning first (clones to `~/.local/share/dot-agent`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dotagents/main/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/cyruspastelero/dot-agent/main/setup.sh | bash
 ```
 
 ## Flags
@@ -21,9 +27,11 @@ By default it links all 24 skills (workflow skills and all commands are manual: 
 | Flag | Effect |
 |---|---|
 | `--skills a,b,c` | Link only these skills (default: all) |
-| `--adhd` | Turn on i-have-adhd for every session (~2.5k tokens per session; off by default) |
+| `--status` | Show what is on and off. Changes nothing |
+| `--adhd` / `--no-adhd` | Install, enable and turn on i-have-adhd for every session (~2.5k tokens per session), or skip the question |
 | `--no-notes-hook` | Don't auto-load `personal_docs/` when a Claude Code session starts |
-| `--plugins` | Also install the i-have-adhd plugin (runs only via `/i-have-adhd`) and the context7 MCP server, pinned |
+| `--plugins` / `--no-plugins` | Install (or re-enable) the i-have-adhd plugin, run via `/i-have-adhd`, and the context7 MCP server, pinned. Or skip the question |
+| `--no-prompt` | Ask nothing; take the defaults (no opt-ins, no audit). Also the behavior when there is no terminal |
 | `--sounds` | macOS notification sounds |
 
 ## What gets linked
@@ -44,7 +52,7 @@ Rule files in `~/.claude/rules/common/` from older versions are folded into `glo
 ## What's inside
 
 ```
-dotagents/
+dot-agent/
 ├── AGENTS.md          instructions for agents opened in this repo (audit mode)
 ├── global/            AGENTS.md for every agent; CLAUDE.md imports it + Claude extras
 ├── skills/            24 skills; setup-audit and project-notes are the core
