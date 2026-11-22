@@ -342,9 +342,11 @@ def server_findings(report: dict, live: list[dict], history_days: float) -> list
         if len(names) > 1:
             out.append(finding("duplicate", " + ".join(names), f"same endpoint {target}", "keep the one you use, remove the rest"))
     if not live:
-        for server in report["mcp"]["user_scope"]:
-            if not any(p.startswith(f"mcp__{server}") for p in mcp_uses):
-                out.append(finding("unused", server, f"0 tool calls in {history_days:.0f} days", "remove (run with --live for status)"))
+        scoped = [(s, s) for s in report["mcp"]["user_scope"]]
+        scoped += [(s, f"{s} (project {p})") for p, names in report["mcp"]["project_scope"].items() for s in names]
+        for server, label in scoped:
+            if not any(p.lower().startswith(f"mcp__{server}".lower()) for p in mcp_uses):
+                out.append(finding("unused", label, f"0 tool calls in {history_days:.0f} days", "remove (run with --live for status)"))
     return out
 
 
