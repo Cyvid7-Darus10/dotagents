@@ -1,5 +1,10 @@
 <div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+  <img src="assets/logo-light.svg" alt="dot-agent logo: one dot in the middle with four smaller dots around it" width="96" height="96">
+</picture>
+
 # dot-agent
 
 **Dotfiles for coding agents.** One lean setup for Claude Code, Codex, Gemini CLI and Cursor, plus a hygiene check that trims what you don't use.
